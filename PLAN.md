@@ -5,7 +5,7 @@
 **Plan start:** October 20, 2026 | **Code freeze:** October 29, 2026  
 **Goal:** Build an advanced, offline-capable intelligent design-retargeting engine with a *small local AI decision model*, while developing a separate, useful demo interface in parallel.
 
-> **Source-of-truth note (October 20):** This plan is grounded in the provided *Final Chameleon Challenge.pdf* and the publicly available Adobe starter repository at <https://github.com/jhaaj08/chameleon>. The team's claimed ZIP attachment was **not visible** when this plan was created. On Day 1, compare this document's paths to the ZIP or team fork; update any path that differs. The latest official `RULES.md`, schema, and engineering clarifications take priority over this plan.
+> **Source-of-truth note (October 20):** This plan is grounded in the provided *Final Chameleon Challenge.pdf* and the publicly available Adobe starter repository at <https://github.com/jhaaj08/chameleon>. Paths were reconciled on October 20 against the team fork <https://github.com/shivraj-jadeja/chameleon> at commit `a44a060` (remote `upstream` = Adobe starter). The challenge PDF is **not in the repo**; obtain it from the organizers and keep a local copy outside git. The latest official `RULES.md`, schema, and engineering clarifications take priority over this plan.
 >
 > **Priority:** The scored Stage 1 deliverable is the **headless Python engine** producing valid JSON and high-quality rendered PNGs. The React frontend and local demo API are useful development/demo additions, but must never become required dependencies of the scored engine. Do not spend submission-critical time polishing UI.
 
@@ -88,14 +88,15 @@ Given `source = {canvas, elements}` and `target_canvas = {width, height}`, `engi
 - `frontend/package.json`, `frontend/package-lock.json` (or one selected package manager's lockfile), `frontend/vite.config.ts`, `frontend/tsconfig*.json`, `frontend/index.html`
 - `frontend/src/main.tsx`, `frontend/src/App.tsx`, `frontend/src/styles/**`
 - `frontend/src/components/**`, `frontend/src/features/preview/**`, `frontend/src/features/canvas-controls/**`
-- `frontend/src/types/contracts.ts` — frontend data/API contract **frozen on Day 1** with Reem
-- `frontend/src/mocks/**`, `frontend/src/__tests__/preview*.test.tsx`, `frontend/src/__tests__/canvas*.test.tsx`
+- `frontend/src/features/inspector/**`: decision-inspector UI (strategy, candidate scores, warnings, debug overlays), built against Reem's `DebugPayload` fixtures
+- `frontend/src/types/contracts.ts` — frontend data/API contract **frozen on Day 1** with Reem; mirrors Reem's `DebugPayload` from `docs/api-contract.md` exactly
+- `frontend/src/mocks/**`, `frontend/src/__tests__/preview*.test.tsx`, `frontend/src/__tests__/canvas*.test.tsx`, `frontend/src/__tests__/inspector*.test.tsx`
 - `docs/ui-notes.md` — installation, screens, controls and demo instructions
-- `plan.md` — plan owner; schedule revisions agreed with team
+- `PLAN.md` — plan owner; schedule revisions agreed with team. Only `PLAN.md` exists; never add a `plan.md` (same path on macOS/Windows case-insensitive filesystems). Rename of references from `plan.md` approved by Shivraj: [ ]
 
-**May read, never directly edit:** `engine/**`, `api/**`, `frontend/src/features/inspector/**`, `frontend/src/services/**`, Adobe renderer and schema.
+**May read, never directly edit:** `engine/**`, `api/**`, `frontend/src/services/**`, Adobe renderer and schema.
 
-### Reem — Full-Stack Lead: AI decision agent, scoring, local API, inspector UI
+### Reem — Full-Stack Lead: AI decision agent, scoring, local API, debug payload
 
 **Actual backend/AI features**
 
@@ -104,8 +105,8 @@ Given `source = {canvas, elements}` and `target_canvas = {width, height}`, `engi
 - Implement a quality objective: structural validity as a hard gate, then overlap/collision penalties, text-space sufficiency, image distortion, alignment, visual hierarchy, spacing, and group cohesion. Preserve intentional layered overlaps.
 - Implement a small **decision/repair loop**: observe -> propose layout strategies -> evaluate candidates -> choose best valid candidate; keep iterations bounded and deterministic.
 - Build a **development-only local API** (`POST /api/resize`, `GET /api/health`, optionally debug endpoint) that calls the official engine and real renderer. No API dependency from the scored engine back to this server.
-- Build the frontend's decision-inspector feature: show selected strategy, candidate scores, warning list and debug overlays (visualization only; never extra fields in scored design JSON).
-- Test model determinism, quality scorer, API input validation, missing assets, extreme sizes, and frontend integration.
+- Own the typed **debug payload** (`DebugPayload`: selected strategy, candidate scores and score breakdown, warnings, overlay geometry) defined in `docs/api-contract.md`, plus saved fixture payloads. Shivraj mirrors it in `frontend/src/types/contracts.ts` and builds the inspector UI. Debug data is never added to scored design JSON.
+- Test model determinism, quality scorer, API input validation, missing assets, extreme sizes, and `DebugPayload` fixtures against the contract.
 
 **Exclusive write files**
 
@@ -116,11 +117,10 @@ Given `source = {canvas, elements}` and `target_canvas = {width, height}`, `engi
 - `tools/train_decision_model.py` — offline training/experiments (not a runtime requirement)
 - `api/app.py`, `api/schemas.py`, `api/render_adapter.py`, `api/requirements.txt`, `api/**`
 - `frontend/src/services/**` — typed API calls/adapters
-- `frontend/src/features/inspector/**` — inspector component, styles, and tests
 - `tests/test_decision_model.py`, `tests/test_ranking.py`, `tests/test_api.py`
-- `docs/model-notes.md`, `docs/api-contract.md`
+- `docs/model-notes.md`, `docs/api-contract.md` (source of truth for `DebugPayload`)
 
-**May read, never directly edit:** `engine/resize.py`, `engine/layouts.py`, `engine/geometry.py`, `frontend/src/App.tsx`, `frontend/src/components/**`, root Dockerfile/requirements, renderer/brand kit.
+**May read, never directly edit:** `engine/resize.py`, `engine/layouts.py`, `engine/geometry.py`, `frontend/src/App.tsx`, `frontend/src/components/**`, `frontend/src/features/inspector/**`, `frontend/src/types/contracts.ts`, root Dockerfile/requirements, renderer/brand kit.
 
 ### Shared / Adobe-owned paths — change control
 
@@ -179,10 +179,10 @@ def rank_candidates(source: dict, target_canvas: dict,
 ### Frontend -> demo API contract — proposed
 
 - `POST /api/resize`: accepts `{ "source": <official design>, "target_canvas": {"width": ..., "height": ...} }` (same envelope as Adobe task input).
-- Response (demo-only): `{ "design": <official output design>, "preview_url": "/api/previews/<id>", "debug": {"strategy": ..., "candidate_scores": ..., "warnings": [...] } }`.
+- Response (demo-only): `{ "design": <official output design>, "preview_url": "/api/previews/<id>", "debug": <DebugPayload> | null }`, where `DebugPayload` minimally holds `{"strategy": ..., "candidate_scores": ..., "warnings": [...]}`.
 - `GET /api/health`: simple healthy/error response.
 - API validation: reject malformed JSON, invalid dimensions, unsupported types, and oversized/unsafe inputs; avoid untrusted file-path injection and arbitrary remote asset URLs.
-- Day 1: Reem writes `docs/api-contract.md`; Shivraj mirrors the stable types in `frontend/src/types/contracts.ts`; both use the same saved fixture payloads.
+- Day 1: Reem writes `docs/api-contract.md` including `DebugPayload`; Shivraj mirrors the stable types in `frontend/src/types/contracts.ts`; both use the same saved fixture payloads. Changes to `DebugPayload` go to the doc first, then Shivraj updates the mirror.
 - If a model score is unavailable, return `debug: null` or an empty diagnostics object while preserving `design` and `preview_url`.
 
 **Mock-first promise:** Shivraj never has to wait for the backend to complete. His preview UI uses sample/fake responses until Reem's endpoint is live. Reem never has to wait for Ruthvik: her API initially uses a mock resize adapter, and her agent receives sample candidate dictionaries.
@@ -216,6 +216,14 @@ def rank_candidates(source: dict, target_canvas: dict,
 
 **Target advanced behavior:** For an extreme 728x90 banner, AI should select a compact strategy and Ruthvik's geometry should generate an adaptive composition. If every element cannot remain prominent, prioritize legality and legibility while preserving **all** elements; do not remove content to make the image appear cleaner.
 
+### Where the intelligent layer matters
+
+The policy and ranker run on **every** input. There is no level detection and no sample-specific logic; behavior must follow from features (aspect-ratio change, density, groups, text length, rotation). The bundled samples show where that pays off:
+
+- **Level 1** (4 elements, 1080×1080 -> 1080×1350; same width, +25% height; no groups, no rotation): policy should mostly pick `preserve` or `vertical_stack` and decide how to spend the extra 270px. The real trap is the `fit: contain` logo (3.2:1): uniform stretch distorts it by 25%, past the ~5% rule. Background is `fit: cover` and may crop to fill.
+- **Level 2** (11 elements, 1080×1080 -> 1600×400; 1:1 to 4:1): source content spans y 60 to 1040, so a vertical stack cannot fit 400px. Expect `horizontal_split` or `compact_banner`. The ranker must keep two shape+label groups (`group_id` badge, cta; label sits inside its shape) together, preserve product (1:1) and logo aspect, and treat the two low-opacity (0.12/0.15) z_index 1 ellipses as intentional layering, not collisions. One ellipse bleeds off-canvas in the source; decide explicitly whether to clamp it. The headline has a `style_runs` entry; pass it through untouched.
+- **Level 3** (17 elements, 1080×1350 -> 728×90; ~8.1:1, height scale ~0.067): strategy selection and ranking decide quality. Three long text blocks (142, 188 and 120 characters) cannot all stay legible at 90px tall; the ranker trades legibility against completeness without dropping elements. Five groups (a variable-count badge row, cta, rotated ribbon at -12°), a rotated pair whose rotated bounds must stay on canvas, and one image whose asset is missing (no crash, no substitute pixels).
+
 ---
 
 ## 5. Day-by-day parallel schedule (all three have independent work)
@@ -225,13 +233,13 @@ def rank_candidates(source: dict, target_canvas: dict,
 | Date / stage | Ruthvik — Backend | Shivraj — Frontend | Reem — Full Stack | Joint checkpoint / free integration capacity |
 | --- | --- | --- | --- | --- |
 | **Oct 20 (kickoff)** | Clone / baseline run; inspect `resize.py`, `main.py`, schema, Docker | Sketch app layout; list viewer states; create UI project branch | Review candidate/policy feasibility; sketch model/API schemas | **30–45m contract meeting.** Agree module names, owners, allowed transformations; confirm hackathon model rules. |
-| **Oct 21 (foundation)** | Create `engine/contracts.py`; basic bounds and geometry helpers; regression tests | Create Vite UI shell, canvas controls, mocked before/after preview, TS API contracts | Commit `docs/api-contract.md`; create decision feature extractor + mock `POST /api/resize` | **Gate A:** starter renders 3 PNGs; no placeholder renderer; contract frozen. Reserve last 1h for interface corrections. |
+| **Oct 21 (foundation)** | Create `engine/contracts.py`; basic bounds and geometry helpers; regression tests | Create Vite UI shell, canvas controls, mocked before/after preview, TS API contracts | Commit `docs/api-contract.md`; create decision feature extractor + mock `POST /api/resize` | **Gate A:** starter renders 3 PNGs; no placeholder renderer; contract frozen; model rules confirmed. Reserve last 1h for interface corrections. |
 | **Oct 22 (parallel build I)** | Code source/target transforms, group-preserving placements, initial candidate templates | Implement sample JSON selection, manual target size, preview viewer and aspect-ratio handling | Build policy chooser from extracted features, scorer skeleton, API validation | Async status + 30m shared test of mocks; do not depend on other branches. |
 | **Oct 23 (parallel build II)** | Finish 3–4 template families; geometry repairs and collision logic | Finish side-by-side/stacked viewer, zoom/fit, loading/errors, component tests | Implement candidate scoring, bounded decision loop, local model parameter serialization/training prototype | **Internal review:** each developer demos their own module; each module has passing unit tests. |
 | **Oct 24 (buffer + PR day)** | Finalize pure-Python engine fallback and invariants; open backend PR | Finish API client with mock responses, responsiveness, UI PR | Finish AI policy + scorer tests; open backend PR; API mocks runnable | **Integration buffer (1–2h):** review PRs, reconcile signatures; no one loses coding time waiting. |
 | **Oct 25 (Integration 1)** | Import policy/ranker, compose candidate pipeline, keep safe fallback; run samples | Swap mock for API when available; keep toggle/fallback for UI | Wire policy to Ruthvik engine; wire API to engine and renderer; fix contract mismatch | **Gate B:** full engine generates structurally valid JSON/real PNG. Demo UI -> API -> engine on local machine. Reserve 2h collaborative debugging. |
-| **Oct 26 (quality I)** | Improve relative placement, group movement, image proportions and text constraints | Improve preview behavior for awkward wide/tall images; JSON export; frontend regression tests | Tune model choice and scoring on unseen synthetic designs; add decision inspector UI | Focused independent work; reserve 1h for high-priority geometry/model fixes. |
-| **Oct 27 (quality II)** | Improve Level 2/3 geometry and intentional layering handling; rotation/out-of-bounds tests | Finish preview + inspector slot integration with Reem's exported component; accessible controls | Build score breakdown/debug UI; compare candidates; expand API and scorer edge tests | **Gate C:** Level 1/2 visually improved; Level 3 valid. Reserve 1–2h for rendering triage and regression fixes. |
+| **Oct 26 (quality I)** | Improve relative placement, group movement, image proportions and text constraints | Improve preview behavior for awkward wide/tall images; JSON export; frontend regression tests | Tune model choice and scoring on unseen synthetic designs; publish `DebugPayload` fixtures from real ranker runs | Focused independent work; reserve 1h for high-priority geometry/model fixes. |
+| **Oct 27 (quality II)** | Improve Level 2/3 geometry and intentional layering handling; rotation/out-of-bounds tests | Build decision-inspector UI against Reem's `DebugPayload` fixtures; accessible controls | Populate `DebugPayload` score breakdown from the ranker; compare candidates; expand API and scorer edge tests | **Gate C:** Level 1/2 visually improved; Level 3 valid. Reserve 1–2h for rendering triage and regression fixes. |
 | **Oct 28 (Integration 2 + hardening)** | Fix remaining critical legal/render failures; eliminate circular imports; run offline Docker | Cross-browser UI checks, README UI instructions, stop cosmetic changes | Verify model bundled offline; end-to-end test of API/UI; produce score/visual regression report | **Gate D:** all samples + unseen tests pass hard rules; freeze contracts and features by end of day. Allocate 2h joint bug bash. |
 | **Oct 29 (code freeze)** | Own final Dockerfile/requirements/README; run linux/amd64 offline smoke tests | Validate frontend demo, provide screenshots/instructions, review root docs | Validate AI determinism, model size/provenance and packaging; review engine output/visuals | **Gate E:** tested, tagged release candidate. Only blocker fixes after freeze; reserve a 2h emergency patch window. |
 | **Oct 30 (submit)** | Final clean clone + Docker run; verify engine files and outputs | Verify links, UI demo optional, help submission documentation | Final check model legality, API independence, checklist, backup submission | **Submit early** using actual hackathon instructions; confirm GitHub permissions, roster, emails, form and receipt. No new features. |
@@ -258,9 +266,10 @@ def rank_candidates(source: dict, target_canvas: dict,
 
 ### Gate A — Oct 21: foundation (must pass)
 
-- [ ] All three run the same starter commit, Python 3.10+ and `python -m engine.main` successfully.
+- [ ] All three run the same starter commit, Python 3.10+ (Docker image uses 3.11; match it locally) and `python -m engine.main` successfully with `cr_renderer` importable.
 - [ ] Check output PNGs contain **actual fonts/assets**, not plain label boxes from the fallback renderer.
 - [ ] `RULES.md` and v0.9 schema reviewed; any changes from newest repo recorded.
+- [ ] Model rules confirmed and written into `docs/model-notes.md`: (a) RULES.md: fine-tuned/LoRA weights must be publicly accessible; (b) README: local model weights must be baked in at build time, nothing fetched under `--network none`; (c) the "offline/size-limit rule in the main brief" and any approved-model list come from the challenge PDF, which is not in the repo, so obtain the exact numbers; (d) eval hardware is "Apple M5 Pro, exact CPU/RAM/disk limits TBD". Decision recorded: tiny feature-based policy with JSON weights unless a checkpoint is explicitly cleared.
 - [ ] Internal Python and frontend/API contracts documented and frozen.
 - [ ] `main`/release branch protected; feature branches created.
 
@@ -334,7 +343,7 @@ main                                # working, shippable baseline
 
 **Every developer should paste or link this instruction at the beginning of every AI-assisted coding session:**
 
-> You are helping on Adobe Project Chameleon. Read `plan.md`, `RULES.md`, `README.md`, and `chameleon_design_schema_v0.9.json` **before** proposing changes. First ask which developer you are assisting (Ruthvik, Shivraj, or Reem), then restrict all file modifications to that developer's exclusive paths specified in `plan.md`. Read other people's code if needed, but do not modify, reformat, rename, remove or overwrite it. Do not alter Adobe's `engine/main.py`, `renderer/`, `brand_kit/`, official samples or schema. If another file must change, explain the reason and request explicit owner approval before touching it. Respect the offline Docker/scoring contract. Provide concise changes, tests, and integration notes; never claim tests passed if you did not run them.
+> You are helping on Adobe Project Chameleon. Read `PLAN.md`, `RULES.md`, `FAQ.md`, `README.md`, and `chameleon_design_schema_v0.9.json` **before** proposing changes. First ask which developer you are assisting (Ruthvik, Shivraj, or Reem), then restrict all file modifications to that developer's exclusive paths specified in `PLAN.md`. Read other people's code if needed, but do not modify, reformat, rename, remove or overwrite it. Do not alter Adobe's `engine/main.py`, `renderer/`, `brand_kit/`, official samples or schema. If another file must change, explain the reason and request explicit owner approval before touching it. Respect the offline Docker/scoring contract. Provide concise changes, tests, and integration notes; never claim tests passed if you did not run them.
 
 **AI assistant rules (mandatory):**
 
@@ -399,7 +408,7 @@ docker run --rm --network none `
   chameleon-engine
 ```
 
-**Do not count it as a passing render if you see only colored labeled boxes.** The starter has a fallback renderer if its real renderer fails to import; fix the renderer dependency instead. Keep `renderer/` unchanged.
+**Do not count it as a passing render if you see only colored labeled boxes.** `engine/main.py` falls back to a box renderer only on `ImportError` of `renderer.converter.convert` (in practice: `cr_renderer` not installed); fix the dependency instead. Keep `renderer/` unchanged.
 
 ---
 
@@ -421,6 +430,14 @@ docker run --rm --network none `
 **Must ship:** a valid geometry engine, at least several general layout strategies, the small local decision/ranking component or documented safe fallback, comprehensive tests, reliable offline Docker, README.
 
 **Can be reduced:** training sophistication, number of UI panels, inspector visual polish, animations, nonessential API options, visual storytelling features. The UI/API can be omitted from Docker entirely.
+
+### Open questions (resolve at Oct 21 standup)
+
+- [ ] FAQ Q5/Q3 call for a required, unscored Express viewer add-on; PLAN.md says not to build one. Ask Adobe engineering which applies. Affects Shivraj's lane.
+- [ ] `resize()` must never raise: `engine/main.py` has no per-task error handling. Ruthvik wraps the pipeline with a safe fallback.
+- [ ] Level 2 bleed: RULES checks off-canvas, README calls the bleed expected. Decide clamp vs keep before Gate C.
+- [ ] Pin `cr-renderer` in `requirements.txt` to a specific commit (Ruthvik).
+- [ ] Obtain the challenge PDF for the model list and size limit; schema is v0.9 provisional, so `git fetch upstream` before Gate A.
 
 ---
 
@@ -457,9 +474,9 @@ Ready for review/merge? Yes/No
 
 ## 12. Source references / precedence
 
-1. **Official challenge PDF:** *Final Chameleon Challenge.pdf*, especially sections 2, 3, 4, 7.1–7.3. Official requirements outrank this team's preferences.
-2. **Starter repository:** <https://github.com/jhaaj08/chameleon> (public version checked October 20, 2026).
-3. **Official file contracts:** `RULES.md`, `chameleon_design_schema_v0.9.json`, `engine/resize.py`, `engine/main.py`, `Dockerfile`, `README.md`.
+1. **Official challenge PDF:** *Final Chameleon Challenge.pdf*, especially sections 2, 3, 4, 7.1–7.3. Not in the repo; keep a local copy. Official requirements outrank this team's preferences.
+2. **Starter repository:** <https://github.com/jhaaj08/chameleon> (`upstream`); team fork <https://github.com/shivraj-jadeja/chameleon> (`origin`), reconciled at `a44a060` on October 20, 2026.
+3. **Official file contracts:** `RULES.md`, `FAQ.md`, `chameleon_design_schema_v0.9.json`, `engine/resize.py`, `engine/main.py`, `Dockerfile`, `README.md`.
 4. **Engineering clarifications / approved models:** Any newer written direction from Adobe supersedes provisional model limits and outdated FAQ passages.
 
 **Final team principle:** *Work in independent folders, integrate through frozen contracts, review rendered results, and always maintain a clean Stage 1 engine that runs offline.*
