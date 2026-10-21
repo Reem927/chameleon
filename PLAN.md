@@ -5,7 +5,7 @@
 **Plan start:** October 20, 2026 | **Code freeze:** October 29, 2026  
 **Goal:** Build an advanced, offline-capable intelligent design-retargeting engine with a *small local AI decision model*, while developing a separate, useful demo interface in parallel.
 
-> **Source-of-truth note (October 20):** This plan is grounded in the provided *Final Chameleon Challenge.pdf* and the publicly available Adobe starter repository at <https://github.com/jhaaj08/chameleon>. Paths were reconciled on October 20 against the team fork <https://github.com/shivraj-jadeja/chameleon> at commit `a44a060` (remote `upstream` = Adobe starter). The challenge PDF is **not in the repo**; obtain it from the organizers and keep a local copy outside git. The latest official `RULES.md`, schema, and engineering clarifications take priority over this plan.
+> **Source-of-truth note (October 20):** This plan is grounded in the provided *Final Chameleon Challenge.pdf* and the publicly available Adobe starter repository at <https://github.com/jhaaj08/chameleon>. Paths were reconciled on October 20 against the private team repo <https://github.com/Reem927/chameleon> at commit `a44a060` (remote `upstream` = Adobe starter). The challenge PDF is **not in the repo**; obtain it from the organizers and keep a local copy outside git. The latest official `RULES.md`, schema, and engineering clarifications take priority over this plan.
 >
 > **Priority:** The scored Stage 1 deliverable is the **headless Python engine** producing valid JSON and high-quality rendered PNGs. The React frontend and local demo API are useful development/demo additions, but must never become required dependencies of the scored engine. Do not spend submission-critical time polishing UI.
 
@@ -475,7 +475,7 @@ Ready for review/merge? Yes/No
 ## 12. Source references / precedence
 
 1. **Official challenge PDF:** *Final Chameleon Challenge.pdf*, especially sections 2, 3, 4, 7.1–7.3. Not in the repo; keep a local copy. Official requirements outrank this team's preferences.
-2. **Starter repository:** <https://github.com/jhaaj08/chameleon> (`upstream`); team fork <https://github.com/shivraj-jadeja/chameleon> (`origin`), reconciled at `a44a060` on October 20, 2026.
+2. **Starter repository:** <https://github.com/jhaaj08/chameleon> (`upstream`); private team repo <https://github.com/Reem927/chameleon> (`origin`), reconciled at `a44a060` on October 20, 2026.
 3. **Official file contracts:** `RULES.md`, `FAQ.md`, `chameleon_design_schema_v0.9.json`, `engine/resize.py`, `engine/main.py`, `Dockerfile`, `README.md`.
 4. **Engineering clarifications / approved models:** Any newer written direction from Adobe supersedes provisional model limits and outdated FAQ passages.
 
