@@ -23,3 +23,6 @@ output/*
 
 # AI Agent use
 CLAUDE.md
+
+# Local research and challenge PDFs. Markdown project notes in docs/ are tracked.
+/docs/*.pdf

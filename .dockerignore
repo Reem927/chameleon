@@ -1,0 +1,9 @@
+.git
+.venv
+venv
+cr-renderer
+docs/*.pdf
+output
+__pycache__
+*.py[cod]
+.DS_Store
