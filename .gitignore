@@ -26,3 +26,8 @@ CLAUDE.md
 
 # Local research and challenge PDFs. Markdown project notes in docs/ are tracked.
 /docs/*.pdf
+
+# Local planning docs. Only the team handoff in docs/ is shared.
+/docs/DESIGN_DECISIONS.md
+/docs/IMPLEMENTATION_LOG.md
+/docs/IMPLEMENTATION_PLAN.md
