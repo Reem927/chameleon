@@ -6,7 +6,11 @@ the Dockerfile) is plumbing so you can focus on exactly one function:
 `resize()`. See RULES.md and the design schema for the full contract.
 """
 
+from copy import deepcopy
 from typing import Any
+
+from engine.constraints import validate_candidate
+from engine.layouts import generate_candidates, safe_fallback, score_candidate
 
 
 def resize(source: dict[str, Any], target_canvas: dict[str, Any]) -> dict[str, Any]:
@@ -43,33 +47,30 @@ def resize(source: dict[str, Any], target_canvas: dict[str, Any]) -> dict[str, A
     concern (see RULES.md) — spend your effort on quality, not speed.
     """
 
-    # ------------------------------------------------------------------
-    # Naive baseline so this file runs out of the box. This is a uniform
-    # stretch — literally the thing the brief tells you NOT to do ("a
-    # naive program stretches the picture; a good one moves the
-    # furniture"). It's here so `python -m engine.main` produces valid,
-    # schema-correct output on day one. Replace the body of this function;
-    # do not just tune these three lines.
-    # ------------------------------------------------------------------
-    scale_x = target_canvas["width"] / source["canvas"]["width"]
-    scale_y = target_canvas["height"] / source["canvas"]["height"]
+    try:
+        legal_candidates = [
+            candidate
+            for _strategy, candidate in generate_candidates(source, target_canvas)
+            if not validate_candidate(source, target_canvas, candidate)
+        ]
+        if legal_candidates:
+            return max(
+                legal_candidates,
+                key=lambda candidate: score_candidate(source, target_canvas, candidate),
+            )
+        # Official inputs are expected to be valid, so a candidate should
+        # normally pass above. This keeps the engine deterministic and
+        # independent of optional policy/ranking modules.
+        return safe_fallback(source, target_canvas)
+    except Exception:  # noqa: BLE001 - engine/main.py has no per-task error handling
+        return _unchanged_copy(source, target_canvas)
 
-    out_elements = []
-    for el in source["elements"]:
-        el = dict(el)  # shallow copy — don't mutate the input
-        el["x"] = el["x"] * scale_x
-        el["y"] = el["y"] * scale_y
-        el["width"] = el["width"] * scale_x
-        el["height"] = el["height"] * scale_y
-        if el["type"] == "text":
-            # font_size scaling isn't required to be uniform — this is
-            # just a starting point. Floored at 1px: the schema requires
-            # font_size >= 1, and an extreme downscale (e.g. a tall poster
-            # squeezed into a short banner) can otherwise compute < 1.
-            el["font_size"] = max(1.0, el["font_size"] * min(scale_x, scale_y))
-        out_elements.append(el)
 
+def _unchanged_copy(source: Any, target_canvas: Any) -> dict[str, Any]:
+    """Last resort for malformed input: keep every element exactly as given."""
+    elements = source.get("elements", []) if isinstance(source, dict) else []
+    canvas = target_canvas if isinstance(target_canvas, dict) else {}
     return {
-        "canvas": {"width": target_canvas["width"], "height": target_canvas["height"]},
-        "elements": out_elements,
+        "canvas": {"width": canvas.get("width"), "height": canvas.get("height")},
+        "elements": deepcopy(elements) if isinstance(elements, list) else [],
     }

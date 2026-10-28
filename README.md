@@ -1,14 +1,13 @@
 # CHAMELEON — starter repo
 
-This is the scaffolding for your engine. It handles input loading, output
-writing, rendering, and Docker packaging — so the only file you need to
-edit is **`engine/resize.py`**.
+This repository contains the Chameleon resizing engine plus its input loading,
+output writing, rendering, validation, tests, and Docker packaging.
 
 ```
 input:  a task JSON (source design + target canvas)
               |
               v
-        engine/resize.py   <-- YOU IMPLEMENT THIS
+        engine/resize.py   <-- chooses a legal layout candidate
               |
               v
 output: <task>_output.json  (schema-valid resized design)
@@ -21,8 +20,13 @@ Both the JSON and the PNG are what get evaluated — see `RULES.md`.
 
 ```
 engine/
-  resize.py        <- implement your approach here
+  resize.py        <- official entry point and candidate selection
+  layouts.py       <- deterministic layout strategies
+  geometry.py      <- bounds, scaling, overlap, groups and clamping
+  constraints.py   <- hard output validation
+  text_fit.py      <- font measurement and text fitting that matches the renderer
   main.py           <- orchestrator (input -> resize() -> output). Don't need to edit this.
+tests/               <- geometry, validation, text fit, readability, resize and renderer tests
 renderer/           <- the real renderer (transformer-convertor + cr-renderer), already vendored
 brand_kit/
   assets/           <- image files referenced by asset_id in the sample designs
@@ -45,12 +49,36 @@ This processes every `*.json` file in `input/` (the 3 sample designs are
 already there — one per difficulty level) and writes an `_output.json` and
 `_output.png` for each into `output/`.
 
-The included baseline is a **uniform stretch** — deliberately the wrong
-approach (see the main brief: "a naive program stretches the picture; a
-good one moves the furniture"). It's there so the pipeline runs on day
-one. Run it once, look at `output/*_output.png`, and you'll see exactly
-why it's not good enough — that's the point. Replace the body of
-`resize()` in `engine/resize.py`, not just its constants.
+## How the engine works
+
+`resize()` builds several complete layouts, rejects any that break a hard rule,
+scores the rest, and returns the best one.
+
+1. **Split the design into units.**
+   A full-canvas `cover` image is the background and is stretched to the new canvas.
+   Ungrouped shapes are decorations and keep their relative position.
+   Every `group_id` becomes one rigid unit, so a button and its label move and scale together.
+2. **Build candidates.**
+   `preserve_and_repair` scales the whole foreground uniformly into a safe box.
+   The flow layouts place units in reading order along one row, one column, or two rows.
+   Each flow layout is built three times with graphics at 100%, 60% and 30% of the text scale, so cramped banners can favour text.
+3. **Reflow text instead of squashing it.**
+   A lone text element may change its box shape.
+   The engine measures the brand fonts with Pillow exactly the way the renderer wraps them and picks the largest font size that fits.
+   All text shares one scale so headlines stay larger than body copy.
+   When space allows, text is kept at 7px or more.
+4. **Reject illegal candidates.**
+   IDs, protected fields, image proportions and canvas bounds are checked in `engine/constraints.py`.
+5. **Score and pick.**
+   The score combines accidental overlap, text readability (weighted by source prominence, plus the worst text), hierarchy, canvas use, alignment, spacing and group cohesion.
+
+If anything unexpected goes wrong, `resize()` returns a proportional fallback, and for malformed input an unchanged copy, so it never raises.
+
+Run the tests with:
+
+```bash
+python -m unittest discover -s tests
+```
 
 ## What the self-check does (and doesn't do)
 
@@ -81,9 +109,9 @@ your layout quality by that fallback.
 
 ```bash
 docker build --platform linux/amd64 -t my-chameleon-engine .
-docker run --rm --network none \
-  -v $(pwd)/input:/app/input \
-  -v $(pwd)/output:/app/output \
+docker run --rm --platform linux/amd64 --network none \
+  --mount type=bind,src="$(pwd)/input",dst=/app/input,readonly \
+  --mount type=bind,src="$(pwd)/output",dst=/app/output \
   my-chameleon-engine
 ```
 
