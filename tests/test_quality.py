@@ -58,7 +58,8 @@ class QualityScoreTests(unittest.TestCase):
                     )
                 ]
 
-                self.assertEqual(max(scores, key=lambda item: item[0])[1], expected)
+                best = max(scores, key=lambda item: item[0])[1]
+                self.assertEqual(best.split("@")[0], expected)
 
     def test_new_unit_overlap_lowers_score_but_group_overlap_is_not_a_collision(self):
         source = _design(

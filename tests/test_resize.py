@@ -71,10 +71,10 @@ class ResizeTests(unittest.TestCase):
                         sample["source"], sample["target_canvas"], candidates[strategy]
                     ),
                 )
-                self.assertEqual(best_strategy, expected_strategy)
+                self.assertEqual(best_strategy.split("@")[0], expected_strategy)
                 self.assertEqual(
                     resize(sample["source"], sample["target_canvas"]),
-                    candidates[expected_strategy],
+                    candidates[best_strategy],
                 )
 
     def test_official_outputs_are_not_the_old_independent_axis_stretch(self):

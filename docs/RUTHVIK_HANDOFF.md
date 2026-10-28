@@ -1,8 +1,8 @@
 # Ruthvik Backend Handoff
 
 Last updated: October 28, 2026  
-Branch: `main` at review time  
-Current backend status: Phase 0 through Phase 3 complete; Phase 5 in progress
+Branch: `feature/ruthvik-core-engine`  
+Current backend status: Phase 0 through Phase 3 complete; Phase 5 in progress (readability and hardening done, clean-clone rehearsal pending)
 
 This is the short document Ruthvik can share with teammates and their coding
 assistants. Read this before changing or integrating backend code.
@@ -24,27 +24,19 @@ See [`PLAN.md`](../PLAN.md) for the complete team file-ownership rules.
 
 ## Current state
 
-- `engine/geometry.py` now provides rotation-aware bounds, proportional scale,
-  overlap, group movement, and canvas clamping.
-- `engine/constraints.py` now rejects candidates that break hard rules.
-- `engine/layouts.py` now generates four deterministic group-aware layouts.
-- `engine/resize.py` now rejects illegal candidates, scores every legal
-  candidate, selects the highest score, and has a safe proportional fallback.
-- The fallback score measures overlap, text readability, hierarchy, canvas
-  use, alignment, spacing, and group cohesion.
-- The real renderer works locally, and its dependency is pinned to a tested
-  commit.
-- There are 42 passing geometry, constraint, renderer, resize, scoring, and
-  synthetic hardening
-  tests.
-- All three official samples pass hard validation and render without engine
-  errors.
-- Stronger repair, varied fixtures, and offline Docker verification are the
-  next work.
-- The `linux/amd64` image builds and completes all samples with networking and
-  the container filesystem disabled for writes. All container outputs validate.
-- The three team members are working separately and have not pushed their
-  implementation branches yet.
+- `engine/geometry.py` provides rotation-aware bounds, proportional scale, overlap, group movement, and canvas clamping.
+- `engine/constraints.py` rejects candidates that break hard rules.
+- `engine/text_fit.py` measures brand fonts the way the renderer wraps them and fits text to a box.
+  Widths match the Linux Docker renderer to the pixel and never fall below the macOS renderer.
+- `engine/layouts.py` builds ten deterministic candidates: `preserve_and_repair` plus row, column, and two-row flow layouts, each with graphics at 100%, 60%, and 30% of the text scale.
+  Lone text reflows into its slot, all text shares one scale, and text stays at 7px or more when the layout allows.
+- `engine/resize.py` rejects illegal candidates, returns the highest-scoring legal one, and never raises.
+- The score measures accidental overlap, text readability (weighted by source prominence plus the worst text), hierarchy, canvas use, alignment, spacing, and group cohesion.
+- On the official samples, the smallest text is now 37.3px (Level 1), 15.3px (Level 2), and 7px (Level 3).
+  Before this work, Level 2 text went down to 7.6px and Level 3 text to 1.5px.
+- 57 tests pass locally and inside the `linux/amd64` image.
+- The image runs all samples with `--network none` and a read-only filesystem, and all outputs validate.
+- Known limits: very small targets with many elements (for example Level 3 at 320x50) still produce unreadable text, and the Level 3 logo becomes very small in the extreme banner.
 
 ## Backend direction
 
@@ -91,7 +83,7 @@ UI is helpful but must not delay the scored engine.
 
 ## Hard rules for every contributor and coding assistant
 
-- Read `RULES.md`, the schema, `PLAN.md`, and these four docs first.
+- Read `RULES.md`, the schema, `PLAN.md`, and this handoff first.
 - Preserve exact IDs, types, assets, text, fonts, groups, and stacking intent.
 - Never generate or edit image pixels.
 - Never hardcode a sample filename, element ID, or brand name.
@@ -143,6 +135,7 @@ From everyone:
 
 ## Where to look next
 
-- Work to do: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
-- Reasons behind choices: [`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md)
-- Work already completed: [`IMPLEMENTATION_LOG.md`](IMPLEMENTATION_LOG.md)
+- Team plan and file ownership: [`PLAN.md`](../PLAN.md)
+- Engine overview and run commands: [`README.md`](../README.md)
+- Detailed backend plan, decision log, and implementation log are kept locally by Ruthvik.
+  Ask Ruthvik if you need a specific decision or test record.

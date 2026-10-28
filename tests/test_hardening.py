@@ -114,6 +114,21 @@ class HardeningTests(unittest.TestCase):
         product = next(element for element in output["elements"] if element["id"] == "product")
         self.assertAlmostEqual(product["width"] / product["height"], 2 / 3)
 
+    def test_malformed_geometry_still_returns_every_element(self):
+        source = stress_design()
+        source["elements"][1]["x"] = "not a number"
+        target = {"width": 600, "height": 600}
+        before = deepcopy(source)
+
+        output = resize(source, target)
+
+        self.assertEqual(source, before)
+        self.assertEqual(output["canvas"], target)
+        self.assertEqual(
+            [element["id"] for element in output["elements"]],
+            [element["id"] for element in source["elements"]],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

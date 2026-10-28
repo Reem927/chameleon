@@ -11,13 +11,12 @@ from typing import Any, Iterable, Mapping, Sequence
 from engine.geometry import (
     Bounds,
     clamp_element,
-    element_bounds,
     group_bounds,
     overlap_area,
     scale_element,
-    translate_element,
     translate_group,
 )
+from engine.text_fit import fit_text, line_count_at, text_overflow, wrap_width
 
 
 Design = dict[str, Any]
@@ -32,49 +31,43 @@ QUALITY_WEIGHTS = {
     "balance_spacing": 0.06,
     "group_cohesion": 0.06,
 }
+# How the flow strategies arrange content units: (direction, number of lines).
+FLOW_STRATEGIES = {
+    "horizontal_split": ("row", 1),
+    "vertical_stack": ("column", 1),
+    "compact_banner": ("row", 2),
+}
+# Graphic scale relative to text scale. 1.0 keeps the source balance between
+# text and graphics; lower values give text priority on cramped canvases.
+GRAPHIC_RATIOS = (1.0, 0.6, 0.3)
+# Shortest comfortable line, in characters, when text wraps in a row.
+MIN_LINE_CHARACTERS = 12
+# Text is kept at least this large (or its source size, if smaller) whenever
+# the layout still fits with that floor in place.
+READABLE_FONT_SIZE = 7.0
+# Text at or below this size earns no readability credit.
+ILLEGIBLE_FONT_SIZE = 4.0
+# Text at or above this size (or its source size) counts as fully legible.
+COMFORTABLE_FONT_SIZE = 14.0
 
 
 def generate_candidates(
     source: Mapping[str, Any], target_canvas: Mapping[str, Any]
 ) -> list[tuple[str, Design]]:
     """Return complete candidates in a stable order."""
-    return [
-        ("preserve_and_repair", preserve_and_repair(source, target_canvas)),
-        ("vertical_stack", vertical_stack(source, target_canvas)),
-        ("horizontal_split", horizontal_split(source, target_canvas)),
-        ("compact_banner", compact_banner(source, target_canvas)),
-    ]
-
-
-def strategy_order(
-    source: Mapping[str, Any], target_canvas: Mapping[str, Any]
-) -> list[str]:
-    """Choose which general strategy to try first for the target shape."""
-    source_ratio = source["canvas"]["width"] / source["canvas"]["height"]
-    target_ratio = target_canvas["width"] / target_canvas["height"]
-    unit_count = len(_content_units(source))
-
-    if target_canvas["height"] <= 120 or (target_ratio >= 5 and unit_count > 6):
-        first = "compact_banner"
-    elif target_ratio > source_ratio * 1.5:
-        first = "horizontal_split"
-    elif target_ratio < source_ratio / 1.5:
-        first = "vertical_stack"
-    else:
-        first = "preserve_and_repair"
-    return [
-        first,
-        *(
-            name
-            for name in (
-                "preserve_and_repair",
-                "horizontal_split",
-                "vertical_stack",
-                "compact_banner",
+    candidates = [("preserve_and_repair", preserve_and_repair(source, target_canvas))]
+    for name, (axis, lines) in FLOW_STRATEGIES.items():
+        for ratio in GRAPHIC_RATIOS:
+            label = name if ratio == 1.0 else f"{name}@{ratio:g}"
+            candidates.append(
+                (
+                    label,
+                    flow_layout(
+                        source, target_canvas, axis=axis, lines=lines, graphic_ratio=ratio
+                    ),
+                )
             )
-            if name != first
-        ),
-    ]
+    return candidates
 
 
 def preserve_and_repair(
@@ -83,45 +76,50 @@ def preserve_and_repair(
     """Fit the full foreground as one composition without stretching it."""
     backgrounds, decorations, content = _parts(source)
     foreground = [element for unit in content for element in unit] + decorations
-    margin = _canvas_margin(target_canvas)
-    safe_box = Bounds(
-        margin,
-        margin,
-        target_canvas["width"] - margin,
-        target_canvas["height"] - margin,
-    )
     transformed = _background_map(backgrounds, target_canvas)
     if foreground:
-        transformed.update(_fit_unit_to_box(foreground, safe_box))
+        transformed.update(_fit_unit_to_box(foreground, _safe_box(target_canvas)))
     return _assemble(source, target_canvas, transformed)
 
 
-def vertical_stack(source: Mapping[str, Any], target_canvas: Mapping[str, Any]) -> Design:
-    backgrounds, decorations, units = _parts(source)
-    units.sort(key=lambda unit: (group_bounds(unit).center[0], group_bounds(unit).center[1]))
-    transformed = _background_map(backgrounds, target_canvas)
-    transformed.update(_place_decorations(decorations, source["canvas"], target_canvas))
-    transformed.update(_pack_grid(units, target_canvas, rows=max(1, len(units)), columns=1))
-    return _assemble(source, target_canvas, transformed)
+def flow_layout(
+    source: Mapping[str, Any],
+    target_canvas: Mapping[str, Any],
+    *,
+    axis: str,
+    lines: int,
+    graphic_ratio: float,
+) -> Design:
+    """Lay content units out in reading order along rows or columns.
 
-
-def horizontal_split(source: Mapping[str, Any], target_canvas: Mapping[str, Any]) -> Design:
-    backgrounds, decorations, units = _parts(source)
-    units.sort(key=lambda unit: (group_bounds(unit).center[1], group_bounds(unit).center[0]))
-    transformed = _background_map(backgrounds, target_canvas)
-    transformed.update(_place_decorations(decorations, source["canvas"], target_canvas))
-    transformed.update(_pack_grid(units, target_canvas, rows=1, columns=max(1, len(units))))
-    return _assemble(source, target_canvas, transformed)
-
-
-def compact_banner(source: Mapping[str, Any], target_canvas: Mapping[str, Any]) -> Design:
+    Text is scaled by one shared factor so its size order survives, and it
+    reflows into whatever box shape the slot allows. Graphics keep their
+    proportions and scale by ``graphic_ratio`` times the text factor, so a
+    lower ratio gives text priority when space is short.
+    """
     backgrounds, decorations, units = _parts(source)
     units.sort(key=lambda unit: (group_bounds(unit).center[1], group_bounds(unit).center[0]))
-    rows = 2 if len(units) > 8 else 1
-    columns = max(1, math.ceil(len(units) / rows))
     transformed = _background_map(backgrounds, target_canvas)
     transformed.update(_place_decorations(decorations, source["canvas"], target_canvas))
-    transformed.update(_pack_grid(units, target_canvas, rows=rows, columns=columns))
+    if units:
+        max_scale = max(
+            1.0,
+            min(
+                target_canvas["width"] / source["canvas"]["width"],
+                target_canvas["height"] / source["canvas"]["height"],
+            ),
+        )
+        transformed.update(
+            _pack_flow(
+                units,
+                _safe_box(target_canvas),
+                axis=axis,
+                lines=lines,
+                graphic_ratio=graphic_ratio,
+                max_scale=max_scale,
+                gap=_canvas_margin(target_canvas) / 2,
+            )
+        )
     return _assemble(source, target_canvas, transformed)
 
 
@@ -149,7 +147,7 @@ def candidate_score_breakdown(
     source_units, output_units = _matching_content_units(source, candidate)
     return {
         "collision": _collision_quality(source_units, output_units),
-        "text": _text_quality(output_units),
+        "text": _text_quality(source_units, output_units),
         "hierarchy": _hierarchy_quality(source_units, output_units),
         "canvas_use": _canvas_use_quality(output_units, target_canvas),
         "alignment": _alignment_quality(output_units, target_canvas),
@@ -234,31 +232,67 @@ def _unit_overlap_ratio(first: Unit, second: Unit) -> float:
     return overlap_area(first_bounds, second_bounds) / smaller_area
 
 
-def _text_quality(units: Sequence[Unit]) -> float:
-    scores = []
-    for element in (element for unit in units for element in unit):
-        if element.get("type") != "text":
-            continue
-        font_size = float(element["font_size"])
-        line_height = float(element.get("line_height", 1.2))
-        columns = max(1.0, float(element["width"]) / max(1.0, font_size * 0.55))
-        lines = max(1.0, float(element["height"]) / max(1.0, font_size * line_height))
-        capacity = columns * lines
-        content_length = max(1, len(element.get("content", "")))
-        legibility = min(1.0, font_size / 12.0)
-        fit = min(1.0, capacity / content_length)
-        scores.append(0.7 * legibility + 0.3 * fit)
-    return fmean(scores) if scores else 1.0
+def _text_quality(source_units: Sequence[Unit], output_units: Sequence[Unit]) -> float:
+    """Readability weighted by source prominence, plus the worst text.
+
+    The worst-text part stops a large headline from hiding fine print that
+    has become unreadable.
+    """
+    total = weight_sum = 0.0
+    worst = 1.0
+    for source_unit, output_unit in zip(source_units, output_units):
+        for original, element in zip(source_unit, output_unit):
+            if element.get("type") != "text":
+                continue
+            source_size = float(original["font_size"])
+            target_size = min(source_size, COMFORTABLE_FONT_SIZE)
+            legibility = _clamp01(
+                (float(element["font_size"]) - ILLEGIBLE_FONT_SIZE)
+                / max(target_size - ILLEGIBLE_FONT_SIZE, 1e-9)
+            )
+            fit = 1.0 - min(1.0, text_overflow(element))
+            quality = 0.7 * legibility + 0.3 * fit
+            total += source_size * quality
+            weight_sum += source_size
+            worst = min(worst, quality)
+    if not weight_sum:
+        return 1.0
+    return 0.7 * total / weight_sum + 0.3 * worst
 
 
 def _hierarchy_quality(source_units: Sequence[Unit], output_units: Sequence[Unit]) -> float:
-    scales = []
+    """How well relative sizes survive.
+
+    Text is compared with text and graphics with graphics by how much each
+    scaled. Between text and graphics only a flipped size order counts,
+    because banners legitimately shrink pictures more than words.
+    """
+    sizes = []
     for source_unit, output_unit in zip(source_units, output_units):
-        source_area = _bounds_area(group_bounds(source_unit))
-        output_area = _bounds_area(group_bounds(output_unit))
-        if source_area > 0 and output_area > 0:
-            scales.append(math.sqrt(output_area / source_area))
-    errors = [abs(math.log(first / second)) for first, second in combinations(scales, 2)]
+        source_size = math.sqrt(_bounds_area(group_bounds(source_unit)))
+        if source_size <= 0:
+            continue
+        if _is_reflowable(source_unit):
+            scale = float(output_unit[0]["font_size"]) / float(source_unit[0]["font_size"])
+        else:
+            scale = math.sqrt(_bounds_area(group_bounds(output_unit))) / source_size
+        if scale > 0:
+            sizes.append((_carries_text(source_unit), source_size, scale))
+
+    errors = []
+    for (text_a, size_a, scale_a), (text_b, size_b, scale_b) in combinations(sizes, 2):
+        change = math.log(scale_a / scale_b)
+        source_order = math.log(size_a / size_b)
+        output_order = source_order + change
+        flipped = output_order * source_order < 0
+        if text_a != text_b:
+            errors.append(abs(output_order) if flipped else 0.0)
+        elif text_a and not flipped:
+            # Lifting small text toward a readable size narrows the gap to
+            # large text without breaking the order, so it costs half.
+            errors.append(abs(change) / 2)
+        else:
+            errors.append(abs(change))
     return math.exp(-fmean(errors)) if errors else 1.0
 
 
@@ -437,36 +471,212 @@ def _place_decorations(
     return transformed
 
 
-def _pack_grid(
+def _pack_flow(
     units: Sequence[Unit],
-    canvas: Mapping[str, Any],
+    box: Bounds,
     *,
-    rows: int,
-    columns: int,
+    axis: str,
+    lines: int,
+    graphic_ratio: float,
+    max_scale: float,
+    gap: float,
 ) -> dict[str, dict[str, Any]]:
-    if not units:
-        return {}
-    margin = _canvas_margin(canvas)
-    gap = min(
-        max(1.0, margin / 2),
-        canvas["width"] / (columns * 4),
-        canvas["height"] / (rows * 4),
-    )
-    usable_width = canvas["width"] - 2 * margin - gap * (columns - 1)
-    usable_height = canvas["height"] - 2 * margin - gap * (rows - 1)
-    cell_width = usable_width / columns
-    cell_height = usable_height / rows
-    transformed = {}
-    for index, unit in enumerate(units):
-        row, column = divmod(index, columns)
-        box = Bounds(
-            margin + column * (cell_width + gap),
-            margin + row * (cell_height + gap),
-            margin + column * (cell_width + gap) + cell_width,
-            margin + row * (cell_height + gap) + cell_height,
-        )
-        transformed.update(_fit_unit_to_box(unit, box))
+    horizontal = axis == "row"
+    main_size = box.width if horizontal else box.height
+    lines = max(1, min(lines, len(units)))
+    cross_size = ((box.height if horizontal else box.width) - gap * (lines - 1)) / lines
+
+    best = None
+    for floor in (READABLE_FONT_SIZE, 1.0):
+        for runs in _contiguous_splits(units, lines):
+            scale = _largest_scale(
+                runs, main_size, cross_size, horizontal, graphic_ratio, max_scale, gap, floor
+            )
+            if scale is not None and (best is None or scale > best[0] + 1e-9):
+                best = (scale, runs)
+        if best is not None:
+            break
+    if best is None:
+        best = (0.0, [list(units)])
+        floor = 1.0
+    scale, runs = best
+
+    transformed: dict[str, dict[str, Any]] = {}
+    for line_index, run in enumerate(runs):
+        cross_start = (box.top if horizontal else box.left) + line_index * (cross_size + gap)
+        extents = [
+            _main_extent(unit, scale, cross_size, horizontal, graphic_ratio, floor)
+            for unit in run
+        ]
+        free = max(0.0, main_size - sum(extents) - gap * (len(run) - 1))
+        if horizontal:
+            # Spare width first lets text wrap onto fewer, longer lines, up
+            # to a single line. Whatever is left spreads around the units.
+            wanted = [
+                _single_line_width(unit, scale, cross_size, floor) - extent
+                if _is_reflowable(unit)
+                else 0.0
+                for unit, extent in zip(run, extents)
+            ]
+            wanted = [max(0.0, value) for value in wanted]
+            share = min(1.0, free / sum(wanted)) if sum(wanted) > 0 else 0.0
+            extents = [extent + value * share for extent, value in zip(extents, wanted)]
+            free -= sum(wanted) * share
+        spacing = free / (len(run) + 1)
+        position = (box.left if horizontal else box.top) + spacing
+        for unit, extent in zip(run, extents):
+            if horizontal:
+                slot = Bounds(position, cross_start, position + extent, cross_start + cross_size)
+            else:
+                slot = Bounds(cross_start, position, cross_start + cross_size, position + extent)
+            transformed.update(_place_in_slot(unit, slot, scale, floor))
+            position += extent + gap + spacing
     return transformed
+
+
+def _contiguous_splits(units: Sequence[Unit], lines: int) -> list[list[list[Unit]]]:
+    """Every way to cut the ordered units into ``lines`` non-empty runs."""
+    if lines == 1:
+        return [[list(units)]]
+    splits = []
+    for cut in range(1, len(units) - lines + 2):
+        for rest in _contiguous_splits(units[cut:], lines - 1):
+            splits.append([list(units[:cut]), *rest])
+    return splits
+
+
+def _largest_scale(
+    runs: Sequence[Sequence[Unit]],
+    main_size: float,
+    cross_size: float,
+    horizontal: bool,
+    graphic_ratio: float,
+    max_scale: float,
+    gap: float,
+    floor: float,
+) -> float | None:
+    """Largest shared text scale that fits, or ``None`` if nothing fits."""
+
+    def fits(scale: float) -> bool:
+        return all(
+            sum(
+                _main_extent(unit, scale, cross_size, horizontal, graphic_ratio, floor)
+                for unit in run
+            )
+            + gap * (len(run) - 1)
+            <= main_size
+            for run in runs
+        )
+
+    if fits(max_scale):
+        return max_scale
+    if not fits(1e-6):
+        return None
+    low, high = 0.0, max_scale
+    for _ in range(30):
+        middle = (low + high) / 2
+        if fits(middle):
+            low = middle
+        else:
+            high = middle
+    return low
+
+
+def _main_extent(
+    unit: Unit,
+    scale: float,
+    cross_size: float,
+    horizontal: bool,
+    graphic_ratio: float,
+    floor: float,
+) -> float:
+    """Length a unit needs along the flow direction at ``scale``."""
+    if _is_reflowable(unit):
+        element = unit[0]
+        font_size = _text_font_size(element, scale, cross_size, horizontal, floor)
+        line_height = font_size * float(element.get("line_height", 1.2))
+        if horizontal:
+            line_slots = max(1, math.floor(cross_size / max(line_height, 1e-9)))
+            # Very short lines read badly, so text never wraps narrower than
+            # about MIN_LINE_CHARACTERS per line, even if the height allows.
+            line_slots = min(
+                line_slots,
+                max(1, math.ceil(len(str(element.get("content", ""))) / MIN_LINE_CHARACTERS)),
+            )
+            return wrap_width(element, font_size, line_slots)
+        return line_count_at(element, font_size, cross_size) * line_height
+
+    bounds = group_bounds(unit)
+    along, across = (bounds.width, bounds.height) if horizontal else (bounds.height, bounds.width)
+    unit_scale = _rigid_scale(unit, scale, graphic_ratio, floor)
+    if across > 0:
+        unit_scale = min(unit_scale, cross_size / across)
+    return along * unit_scale
+
+
+def _single_line_width(unit: Unit, scale: float, cross_size: float, floor: float) -> float:
+    element = unit[0]
+    font_size = _text_font_size(element, scale, cross_size, True, floor)
+    return wrap_width(element, font_size, 1)
+
+
+def _rigid_scale(unit: Unit, scale: float, graphic_ratio: float, floor: float) -> float:
+    """Scale for a unit that keeps its shape.
+
+    Units with text follow the text scale, raised so their smallest label
+    stays readable. Pure graphics follow ``graphic_ratio`` times that scale.
+    """
+    label_sizes = [float(e["font_size"]) for e in unit if e.get("type") == "text"]
+    if not label_sizes:
+        return scale * graphic_ratio
+    smallest = min(label_sizes)
+    return max(scale, min(smallest, floor) / smallest)
+
+
+def _readable_font_size(element: Mapping[str, Any], scale: float, floor: float) -> float:
+    font_size = float(element["font_size"])
+    return max(font_size * scale, min(font_size, floor))
+
+
+def _text_font_size(
+    element: Mapping[str, Any],
+    scale: float,
+    cross_size: float,
+    horizontal: bool,
+    floor: float,
+) -> float:
+    font_size = _readable_font_size(element, scale, floor)
+    if horizontal:
+        font_size = min(font_size, cross_size / float(element.get("line_height", 1.2)))
+    return max(1.0, font_size)
+
+
+def _place_in_slot(
+    unit: Unit, slot: Bounds, scale: float, floor: float
+) -> dict[str, dict[str, Any]]:
+    if not _is_reflowable(unit):
+        return _fit_unit_to_box(unit, slot)
+    element = unit[0]
+    font_size = min(
+        _readable_font_size(element, scale, floor),
+        slot.height / float(element.get("line_height", 1.2)),
+    )
+    fitted = fit_text(element, slot.width, slot.height, max_font_size=font_size)
+    fitted["x"] = slot.center[0] - fitted["width"] / 2
+    fitted["y"] = slot.center[1] - fitted["height"] / 2
+    return {fitted["id"]: fitted}
+
+
+def _is_reflowable(unit: Unit) -> bool:
+    """A lone upright text element can change its box shape and wrap."""
+    if len(unit) != 1 or unit[0].get("type") != "text":
+        return False
+    rotation = float(unit[0].get("rotation", 0)) % 360
+    return min(rotation, 360 - rotation) <= 1e-6
+
+
+def _carries_text(unit: Unit) -> bool:
+    return any(element.get("type") == "text" for element in unit)
 
 
 def _fit_unit_to_box(
@@ -502,6 +712,11 @@ def _assemble(
             for element in source["elements"]
         ],
     }
+
+
+def _safe_box(canvas: Mapping[str, Any]) -> Bounds:
+    margin = _canvas_margin(canvas)
+    return Bounds(margin, margin, canvas["width"] - margin, canvas["height"] - margin)
 
 
 def _canvas_margin(canvas: Mapping[str, Any]) -> float:

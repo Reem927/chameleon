@@ -6,6 +6,7 @@ the Dockerfile) is plumbing so you can focus on exactly one function:
 `resize()`. See RULES.md and the design schema for the full contract.
 """
 
+from copy import deepcopy
 from typing import Any
 
 from engine.constraints import validate_candidate
@@ -46,7 +47,6 @@ def resize(source: dict[str, Any], target_canvas: dict[str, Any]) -> dict[str, A
     concern (see RULES.md) — spend your effort on quality, not speed.
     """
 
-    fallback = safe_fallback(source, target_canvas)
     try:
         legal_candidates = [
             candidate
@@ -58,10 +58,19 @@ def resize(source: dict[str, Any], target_canvas: dict[str, Any]) -> dict[str, A
                 legal_candidates,
                 key=lambda candidate: score_candidate(source, target_canvas, candidate),
             )
-    except (KeyError, TypeError, ValueError, ZeroDivisionError):
-        return fallback
+        # Official inputs are expected to be valid, so a candidate should
+        # normally pass above. This keeps the engine deterministic and
+        # independent of optional policy/ranking modules.
+        return safe_fallback(source, target_canvas)
+    except Exception:  # noqa: BLE001 - engine/main.py has no per-task error handling
+        return _unchanged_copy(source, target_canvas)
 
-    # Official inputs are expected to be valid, so preserve-and-repair should
-    # normally pass above. This final path keeps the engine deterministic and
-    # independent of optional policy/ranking modules.
-    return fallback
+
+def _unchanged_copy(source: Any, target_canvas: Any) -> dict[str, Any]:
+    """Last resort for malformed input: keep every element exactly as given."""
+    elements = source.get("elements", []) if isinstance(source, dict) else []
+    canvas = target_canvas if isinstance(target_canvas, dict) else {}
+    return {
+        "canvas": {"width": canvas.get("width"), "height": canvas.get("height")},
+        "elements": deepcopy(elements) if isinstance(elements, list) else [],
+    }

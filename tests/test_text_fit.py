@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from engine.text_fit import fit_text, line_count
+from engine.text_fit import WIDTH_SAFETY, fit_text, line_count, line_count_at, wrap_width
 from renderer.converter.brand_fonts import load_brand_font_manager
 from renderer.converter.convert import _normalize_weight, _weight_style_to_font_style
 from renderer.converter.wrap import char_widths, wrap_text
@@ -113,6 +113,29 @@ class TextFitTests(unittest.TestCase):
 
         self.assertGreaterEqual(fitted["font_size"], 1)
         self.assertLessEqual(line_count(fitted) * fitted["font_size"] * 1.2, 90 + 1e-6)
+
+    def test_measured_widths_never_underestimate_the_renderer(self):
+        # Linux Skia hints advances at the drawn size and macOS Skia does not,
+        # so the engine must cover both without wildly overestimating.
+        content = "Botanical sparkling infusions, SHOP 2026 Light!"
+        for family, weight in (("Solstice Sans", "regular"), ("Solstice Serif", "bold")):
+            for size in (7, 11.2, 37, 51.63):
+                with self.subTest(family=family, weight=weight, size=size):
+                    element = _text(content=content, font_family=family, font_weight=weight)
+                    renderer_width = sum(
+                        char_widths(FONT_MANAGER, family, weight, weight, size, content)
+                    )
+                    width = wrap_width(element, size, 1) * WIDTH_SAFETY
+                    self.assertGreaterEqual(width + 0.01, renderer_width)
+                    self.assertLessEqual(width / renderer_width, 1.2)
+
+    def test_wrap_width_is_the_narrowest_width_for_a_line_count(self):
+        element = _text(content="Chase the Light")
+        for lines in (1, 2):
+            with self.subTest(lines=lines):
+                width = wrap_width(element, 50, lines)
+                self.assertLessEqual(line_count_at(element, 50, width), lines)
+                self.assertGreater(line_count_at(element, 50, width * 0.97), lines)
 
     def test_fit_never_mutates_the_input_element(self):
         element = _text()
