@@ -1,0 +1,53 @@
+/* Brand kit fonts, read straight from ../brand_kit/fonts so the live preview
+   uses the same faces as the official renderer. Family names match the
+   `font_family` values in the design JSON. */
+
+@font-face {
+  font-family: 'Solstice Sans';
+  src: url('../../../brand_kit/fonts/SolsticeSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Solstice Sans';
+  src: url('../../../brand_kit/fonts/SolsticeSans-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Solstice Sans';
+  src: url('../../../brand_kit/fonts/SolsticeSans-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Solstice Sans';
+  src: url('../../../brand_kit/fonts/SolsticeSans-BoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Solstice Serif';
+  src: url('../../../brand_kit/fonts/SolsticeSerif-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Solstice Serif';
+  src: url('../../../brand_kit/fonts/SolsticeSerif-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Solstice Serif';
+  src: url('../../../brand_kit/fonts/SolsticeSerif-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
