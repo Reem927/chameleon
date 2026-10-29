@@ -55,7 +55,7 @@ See [`PLAN.md`](../PLAN.md) for the complete team file-ownership rules.
 - **Feel:** the shell takes its accent colours from the loaded design.
   An SVG chameleon mascot follows the pointer and reacts to busy, success and error states.
   The UI also has toasts and JSON/PNG export, works at 390px width with no sideways scroll, and respects reduced motion.
-- **Tests:** 41 frontend tests pass with `npm test`. Typecheck and production build pass with `npm run build`.
+- **Tests:** 39 frontend tests pass with `npm test`; 2 preset tests skip when the dev-presets folder is absent. Typecheck and production build pass with `npm run build`.
   All tests read the real `input/*.json` samples from disk, and no fixture data is authored.
 - **Known limit:** without the API, changing the target cannot produce a new layout. The UI says "engine offline" and marks the old result as stale.
 
@@ -114,8 +114,8 @@ but never writes them.
 
 - Read `RULES.md`, the schema, `PLAN.md`, this handoff and [`RUTHVIK_HANDOFF.md`](RUTHVIK_HANDOFF.md) first.
 - **No hardcoded or fake data, including in tests.** Data comes only from user files, the real `input/`, `output/` and `brand_kit/` files, or the real API.
-  - The one exception is `frontend/src/mocks/dev-presets/`, a list of real platform sizes kept for testing. Delete that folder before merging to `main`.
-  - The app keeps working without it: the preset chips disappear, but typing a size and dragging the frame still work.
+  - Preset sizes are optional and load only from `frontend/src/mocks/dev-presets/`. That folder is not on `main`.
+    It is gitignored, so a local copy can stay for testing. Without it the preset chips and snapping are hidden, but typing a size and dragging the frame still work.
 - Do not edit `frontend/` files owned by Shivraj without approval. `frontend/src/services/**` belongs to Reem.
 - Never make the scored engine depend on the frontend or the API.
 - Never generate or edit image pixels.
@@ -128,7 +128,7 @@ but never writes them.
 cd frontend
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 41 tests
+npm test           # 39 pass, 2 preset tests skip without dev-presets
 npm run build      # typecheck + production build
 ```
 
