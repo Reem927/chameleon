@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Dev/test-only preset sizes: keep local, never commit
+src/mocks/dev-presets/
