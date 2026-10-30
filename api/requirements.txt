@@ -1,0 +1,2 @@
+# The demo API uses only the Python standard library plus the root
+# requirements.txt (engine and renderer). Nothing extra to install.
