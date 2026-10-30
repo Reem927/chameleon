@@ -1,0 +1,97 @@
+{
+  "canvas": {
+    "width": 1080,
+    "height": 1080
+  },
+  "elements": [
+    {
+      "id": "paper",
+      "type": "shape",
+      "x": 0,
+      "y": 0,
+      "width": 1080,
+      "height": 1080,
+      "z_index": 0,
+      "shape_type": "rectangle",
+      "fill_color": "rgba(255,255,255,1)"
+    },
+    {
+      "id": "product",
+      "type": "image",
+      "x": 340,
+      "y": 120,
+      "width": 400,
+      "height": 400,
+      "z_index": 1,
+      "asset_id": "solstice_bottle.png",
+      "fit": "contain"
+    },
+    {
+      "id": "title",
+      "type": "text",
+      "x": 140,
+      "y": 580,
+      "width": 800,
+      "height": 80,
+      "z_index": 2,
+      "content": "Fine print, mostly",
+      "font_family": "Solstice Serif",
+      "font_size": 56,
+      "color": "rgba(28,30,38,1)",
+      "font_weight": "bold",
+      "text_align": "center"
+    },
+    {
+      "id": "legal_one",
+      "type": "text",
+      "x": 140,
+      "y": 760,
+      "width": 800,
+      "height": 40,
+      "z_index": 2,
+      "content": "Contains natural flavors. Keep refrigerated after opening and consume within three days.",
+      "font_family": "Solstice Sans",
+      "font_size": 10,
+      "color": "rgba(28,30,38,1)"
+    },
+    {
+      "id": "legal_two",
+      "type": "text",
+      "x": 140,
+      "y": 820,
+      "width": 800,
+      "height": 40,
+      "z_index": 2,
+      "content": "Offer valid in participating regions only. Not combinable with other promotions or discounts.",
+      "font_family": "Solstice Sans",
+      "font_size": 9,
+      "color": "rgba(28,30,38,1)"
+    },
+    {
+      "id": "legal_three",
+      "type": "text",
+      "x": 140,
+      "y": 880,
+      "width": 800,
+      "height": 40,
+      "z_index": 2,
+      "content": "Product imagery is illustrative. Actual color may vary between production batches.",
+      "font_family": "Solstice Sans",
+      "font_size": 8,
+      "color": "rgba(28,30,38,1)"
+    },
+    {
+      "id": "tiny_tag",
+      "type": "text",
+      "x": 900,
+      "y": 1020,
+      "width": 140,
+      "height": 20,
+      "z_index": 2,
+      "content": "v2.4",
+      "font_family": "Solstice Sans",
+      "font_size": 8,
+      "color": "rgba(28,30,38,0.6)"
+    }
+  ]
+}

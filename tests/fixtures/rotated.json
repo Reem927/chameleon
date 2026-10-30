@@ -1,0 +1,122 @@
+{
+  "canvas": {
+    "width": 1080,
+    "height": 1080
+  },
+  "elements": [
+    {
+      "id": "floor",
+      "type": "shape",
+      "x": 0,
+      "y": 0,
+      "width": 1080,
+      "height": 1080,
+      "z_index": 0,
+      "shape_type": "rectangle",
+      "fill_color": "rgba(244,236,220,1)"
+    },
+    {
+      "id": "tilted_title",
+      "type": "text",
+      "x": 140,
+      "y": 100,
+      "width": 800,
+      "height": 120,
+      "z_index": 2,
+      "content": "Off the beaten path",
+      "font_family": "Solstice Serif",
+      "font_size": 72,
+      "color": "rgba(28,30,38,1)",
+      "font_weight": "bold",
+      "rotation": -12,
+      "text_align": "center"
+    },
+    {
+      "id": "tilted_photo",
+      "type": "image",
+      "x": 120,
+      "y": 380,
+      "width": 300,
+      "height": 300,
+      "z_index": 2,
+      "asset_id": "solstice_bottle.png",
+      "fit": "contain",
+      "rotation": 12
+    },
+    {
+      "id": "diagonal_note",
+      "type": "text",
+      "x": 520,
+      "y": 420,
+      "width": 360,
+      "height": 70,
+      "z_index": 2,
+      "content": "Limited run",
+      "font_family": "Solstice Sans",
+      "font_size": 44,
+      "color": "rgba(36,140,120,1)",
+      "rotation": 45,
+      "font_weight": "bold",
+      "text_align": "center"
+    },
+    {
+      "id": "side_tab_bg",
+      "type": "shape",
+      "x": 840,
+      "y": 640,
+      "width": 280,
+      "height": 70,
+      "z_index": 2,
+      "shape_type": "rectangle",
+      "fill_color": "rgba(36,140,120,1)",
+      "rotation": 90,
+      "group_id": "side_tab"
+    },
+    {
+      "id": "side_tab_text",
+      "type": "text",
+      "x": 840,
+      "y": 655,
+      "width": 280,
+      "height": 40,
+      "z_index": 3,
+      "content": "Since 2019",
+      "font_family": "Solstice Sans",
+      "font_size": 28,
+      "color": "rgba(255,255,255,1)",
+      "rotation": 90,
+      "text_align": "center",
+      "group_id": "side_tab"
+    },
+    {
+      "id": "stamp_bg",
+      "type": "shape",
+      "x": 200,
+      "y": 820,
+      "width": 260,
+      "height": 90,
+      "z_index": 2,
+      "shape_type": "rectangle",
+      "fill_color": "rgba(28,30,38,1)",
+      "rotation": -12,
+      "corner_radius": 12,
+      "group_id": "stamp"
+    },
+    {
+      "id": "stamp_text",
+      "type": "text",
+      "x": 200,
+      "y": 845,
+      "width": 260,
+      "height": 40,
+      "z_index": 3,
+      "content": "Taste tested",
+      "font_family": "Solstice Sans",
+      "font_size": 28,
+      "color": "rgba(255,255,255,1)",
+      "rotation": -12,
+      "text_align": "center",
+      "group_id": "stamp"
+    }
+  ]
+}
