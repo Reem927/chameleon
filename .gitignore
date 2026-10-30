@@ -31,3 +31,6 @@ CLAUDE.md
 /docs/DESIGN_DECISIONS.md
 /docs/IMPLEMENTATION_LOG.md
 /docs/IMPLEMENTATION_PLAN.md
+
+# Claude Code local state and agent worktrees
+.claude/
