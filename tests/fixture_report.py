@@ -18,6 +18,7 @@ from itertools import combinations
 from pathlib import Path
 
 from engine.constraints import validate_candidate
+from engine.decision_policy import suggest_policies
 from engine.geometry import element_bounds, group_bounds, overlap_area
 from engine.layouts import generate_candidates
 from engine.resize import resize
@@ -36,7 +37,7 @@ ILLEGIBLE_FONT = 4.0
 
 
 def winning_strategy(source, target, output):
-    candidates = generate_candidates(source, target)
+    candidates = generate_candidates(source, target, suggest_policies(source, target))
     for name, candidate in candidates:
         if candidate == output:
             if validate_candidate(source, target, candidate):

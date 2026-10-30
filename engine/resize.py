@@ -9,8 +9,9 @@ the Dockerfile) is plumbing so you can focus on exactly one function:
 from copy import deepcopy
 from typing import Any
 
-from engine.constraints import validate_candidate
-from engine.layouts import generate_candidates, safe_fallback, score_candidate
+from engine.decision_policy import suggest_policies
+from engine.layouts import generate_candidates, safe_fallback
+from engine.ranking import rank_candidates
 
 
 def resize(source: dict[str, Any], target_canvas: dict[str, Any]) -> dict[str, Any]:
@@ -48,22 +49,24 @@ def resize(source: dict[str, Any], target_canvas: dict[str, Any]) -> dict[str, A
     """
 
     try:
-        legal_candidates = [
-            candidate
-            for _strategy, candidate in generate_candidates(source, target_canvas)
-            if not validate_candidate(source, target_canvas, candidate)
-        ]
-        if legal_candidates:
-            return max(
-                legal_candidates,
-                key=lambda candidate: score_candidate(source, target_canvas, candidate),
-            )
+        policies = _policies(source, target_canvas)
+        candidates = generate_candidates(source, target_canvas, policies)
+        best, _diagnostics = rank_candidates(source, target_canvas, candidates, policies)
+        if best is not None:
+            return best
         # Official inputs are expected to be valid, so a candidate should
-        # normally pass above. This keeps the engine deterministic and
-        # independent of optional policy/ranking modules.
+        # normally pass above. This keeps the engine deterministic.
         return safe_fallback(source, target_canvas)
     except Exception:  # noqa: BLE001 - engine/main.py has no per-task error handling
         return _unchanged_copy(source, target_canvas)
+
+
+def _policies(source: Any, target_canvas: Any) -> list[dict]:
+    """The policy only adds options, so if it fails the engine runs without it."""
+    try:
+        return suggest_policies(source, target_canvas)
+    except Exception:  # noqa: BLE001 - a broken policy must never break resize()
+        return []
 
 
 def _unchanged_copy(source: Any, target_canvas: Any) -> dict[str, Any]:
