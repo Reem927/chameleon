@@ -1,0 +1,84 @@
+{
+  "canvas": {
+    "width": 1080,
+    "height": 1080
+  },
+  "elements": [
+    {
+      "id": "ground",
+      "type": "shape",
+      "x": 0,
+      "y": 0,
+      "width": 1080,
+      "height": 1080,
+      "z_index": 0,
+      "shape_type": "rectangle",
+      "fill_color": "rgba(244,236,220,1)"
+    },
+    {
+      "id": "giant_word",
+      "type": "text",
+      "x": 140,
+      "y": 140,
+      "width": 800,
+      "height": 120,
+      "z_index": 2,
+      "content": "Supercalifragilisticexpialidocious",
+      "font_family": "Solstice Serif",
+      "font_size": 64,
+      "color": "rgba(28,30,38,1)",
+      "font_weight": "bold",
+      "text_align": "center"
+    },
+    {
+      "id": "compound",
+      "type": "text",
+      "x": 140,
+      "y": 360,
+      "width": 500,
+      "height": 80,
+      "z_index": 2,
+      "content": "Donaudampfschifffahrtsgesellschaft",
+      "font_family": "Solstice Sans",
+      "font_size": 40,
+      "color": "rgba(28,30,38,1)"
+    },
+    {
+      "id": "link",
+      "type": "text",
+      "x": 140,
+      "y": 520,
+      "width": 420,
+      "height": 60,
+      "z_index": 2,
+      "content": "www.solstice-botanicals.example.com/summer",
+      "font_family": "Solstice Sans",
+      "font_size": 28,
+      "color": "rgba(36,140,120,1)"
+    },
+    {
+      "id": "mixed",
+      "type": "text",
+      "x": 140,
+      "y": 660,
+      "width": 360,
+      "height": 200,
+      "z_index": 2,
+      "content": "Try our Extraordinarilyrefreshingly sparkling lineup",
+      "font_family": "Solstice Serif",
+      "font_size": 40,
+      "color": "rgba(28,30,38,1)"
+    },
+    {
+      "id": "sticker",
+      "type": "image",
+      "x": 700,
+      "y": 700,
+      "width": 240,
+      "height": 240,
+      "z_index": 2,
+      "asset_id": "solstice_bottle.png",
+      "fit": "contain"
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "canvas": {
+    "width": 1080,
+    "height": 1350
+  },
+  "elements": [
+    {
+      "id": "wash",
+      "type": "image",
+      "x": 0,
+      "y": 0,
+      "width": 1080,
+      "height": 1350,
+      "z_index": 0,
+      "asset_id": "solstice_bg_gradient.png",
+      "fit": "cover"
+    },
+    {
+      "id": "split_headline",
+      "type": "text",
+      "x": 100,
+      "y": 300,
+      "width": 880,
+      "height": 300,
+      "z_index": 2,
+      "content": "Bright mornings, golden evenings",
+      "font_family": "Solstice Serif",
+      "font_size": 88,
+      "color": "rgba(255,255,255,1)",
+      "font_weight": "bold",
+      "text_align": "center",
+      "style_runs": [
+        {
+          "start": 18,
+          "end": 32,
+          "color": "rgba(255,200,80,1)"
+        }
+      ]
+    },
+    {
+      "id": "accent_line",
+      "type": "text",
+      "x": 140,
+      "y": 660,
+      "width": 800,
+      "height": 90,
+      "z_index": 2,
+      "content": "Now with 30% more sparkle",
+      "font_family": "Solstice Sans",
+      "font_size": 40,
+      "color": "rgba(255,255,255,1)",
+      "text_align": "center",
+      "style_runs": [
+        {
+          "start": 9,
+          "end": 12,
+          "color": "rgba(255,200,80,1)",
+          "font_weight": "bold"
+        },
+        {
+          "start": 18,
+          "end": 25,
+          "font_style": "italic"
+        }
+      ]
+    },
+    {
+      "id": "pack",
+      "type": "image",
+      "x": 390,
+      "y": 820,
+      "width": 300,
+      "height": 300,
+      "z_index": 2,
+      "asset_id": "solstice_bottle.png",
+      "fit": "contain"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "canvas": {
+    "width": 1080,
+    "height": 1080
+  },
+  "elements": [
+    {
+      "id": "base",
+      "type": "shape",
+      "x": 0,
+      "y": 0,
+      "width": 1080,
+      "height": 1080,
+      "z_index": 0,
+      "shape_type": "rectangle",
+      "fill_color": "rgba(28,30,38,1)"
+    },
+    {
+      "id": "ghost_photo",
+      "type": "image",
+      "x": 140,
+      "y": 120,
+      "width": 800,
+      "height": 500,
+      "z_index": 1,
+      "asset_id": "seasonal_hero_does_not_exist.png",
+      "fit": "contain"
+    },
+    {
+      "id": "brand_mark",
+      "type": "image",
+      "x": 390,
+      "y": 660,
+      "width": 300,
+      "height": 100,
+      "z_index": 2,
+      "asset_id": "solstice_logo_lockup.png",
+      "fit": "contain"
+    },
+    {
+      "id": "headline",
+      "type": "text",
+      "x": 140,
+      "y": 800,
+      "width": 800,
+      "height": 120,
+      "z_index": 2,
+      "content": "Picture this",
+      "font_family": "Solstice Serif",
+      "font_size": 72,
+      "color": "rgba(255,255,255,1)",
+      "font_weight": "bold",
+      "text_align": "center"
+    }
+  ]
+}

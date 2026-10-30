@@ -1,0 +1,99 @@
+{
+  "canvas": {
+    "width": 1080,
+    "height": 1920
+  },
+  "elements": [
+    {
+      "id": "story_bg",
+      "type": "image",
+      "x": 0,
+      "y": 0,
+      "width": 1080,
+      "height": 1920,
+      "z_index": 0,
+      "asset_id": "solstice_bg_gradient.png",
+      "fit": "cover"
+    },
+    {
+      "id": "story_logo",
+      "type": "image",
+      "x": 340,
+      "y": 120,
+      "width": 400,
+      "height": 133,
+      "z_index": 2,
+      "asset_id": "solstice_logo_lockup.png",
+      "fit": "contain"
+    },
+    {
+      "id": "story_title",
+      "type": "text",
+      "x": 100,
+      "y": 360,
+      "width": 880,
+      "height": 300,
+      "z_index": 2,
+      "content": "Your evening, upgraded",
+      "font_family": "Solstice Serif",
+      "font_size": 96,
+      "color": "rgba(255,255,255,1)",
+      "font_weight": "bold",
+      "text_align": "center"
+    },
+    {
+      "id": "story_product",
+      "type": "image",
+      "x": 190,
+      "y": 720,
+      "width": 700,
+      "height": 700,
+      "z_index": 2,
+      "asset_id": "solstice_bottle.png",
+      "fit": "contain"
+    },
+    {
+      "id": "story_body",
+      "type": "text",
+      "x": 140,
+      "y": 1460,
+      "width": 800,
+      "height": 120,
+      "z_index": 2,
+      "content": "Swipe up to build a mixed case and get free delivery on your first order.",
+      "font_family": "Solstice Sans",
+      "font_size": 34,
+      "color": "rgba(255,255,255,1)",
+      "text_align": "center"
+    },
+    {
+      "id": "swipe_bg",
+      "type": "shape",
+      "x": 290,
+      "y": 1640,
+      "width": 500,
+      "height": 110,
+      "z_index": 2,
+      "shape_type": "rectangle",
+      "fill_color": "rgba(255,255,255,1)",
+      "corner_radius": 55,
+      "group_id": "swipe"
+    },
+    {
+      "id": "swipe_label",
+      "type": "text",
+      "x": 290,
+      "y": 1672,
+      "width": 500,
+      "height": 48,
+      "z_index": 3,
+      "content": "Build my case",
+      "font_family": "Solstice Sans",
+      "font_size": 38,
+      "color": "rgba(28,30,38,1)",
+      "font_weight": "bold",
+      "text_align": "center",
+      "group_id": "swipe"
+    }
+  ]
+}

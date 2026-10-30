@@ -1,0 +1,86 @@
+{
+  "canvas": {
+    "width": 1600,
+    "height": 400
+  },
+  "elements": [
+    {
+      "id": "strip_bg",
+      "type": "image",
+      "x": 0,
+      "y": 0,
+      "width": 1600,
+      "height": 400,
+      "z_index": 0,
+      "asset_id": "solstice_bg_gradient.png",
+      "fit": "cover"
+    },
+    {
+      "id": "bottle",
+      "type": "image",
+      "x": 60,
+      "y": 40,
+      "width": 320,
+      "height": 320,
+      "z_index": 2,
+      "asset_id": "solstice_bottle.png",
+      "fit": "contain"
+    },
+    {
+      "id": "strip_title",
+      "type": "text",
+      "x": 420,
+      "y": 50,
+      "width": 760,
+      "height": 150,
+      "z_index": 2,
+      "content": "Summer starts on the porch",
+      "font_family": "Solstice Serif",
+      "font_size": 60,
+      "color": "rgba(255,255,255,1)",
+      "font_weight": "bold"
+    },
+    {
+      "id": "strip_sub",
+      "type": "text",
+      "x": 420,
+      "y": 220,
+      "width": 760,
+      "height": 90,
+      "z_index": 2,
+      "content": "Pick up a twelve-pack at your local grocer this week.",
+      "font_family": "Solstice Sans",
+      "font_size": 28,
+      "color": "rgba(255,255,255,1)"
+    },
+    {
+      "id": "shop_bg",
+      "type": "shape",
+      "x": 1240,
+      "y": 150,
+      "width": 300,
+      "height": 90,
+      "z_index": 2,
+      "shape_type": "rectangle",
+      "fill_color": "rgba(255,255,255,1)",
+      "corner_radius": 45,
+      "group_id": "shop"
+    },
+    {
+      "id": "shop_label",
+      "type": "text",
+      "x": 1240,
+      "y": 175,
+      "width": 300,
+      "height": 40,
+      "z_index": 3,
+      "content": "Find a store",
+      "font_family": "Solstice Sans",
+      "font_size": 30,
+      "color": "rgba(28,30,38,1)",
+      "font_weight": "bold",
+      "text_align": "center",
+      "group_id": "shop"
+    }
+  ]
+}

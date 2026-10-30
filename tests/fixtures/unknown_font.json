@@ -1,0 +1,73 @@
+{
+  "canvas": {
+    "width": 1080,
+    "height": 1080
+  },
+  "elements": [
+    {
+      "id": "base",
+      "type": "shape",
+      "x": 0,
+      "y": 0,
+      "width": 1080,
+      "height": 1080,
+      "z_index": 0,
+      "shape_type": "rectangle",
+      "fill_color": "rgba(28,30,38,1)"
+    },
+    {
+      "id": "display",
+      "type": "text",
+      "x": 100,
+      "y": 160,
+      "width": 880,
+      "height": 240,
+      "z_index": 2,
+      "content": "Unfamiliar type renders anyway",
+      "font_family": "Helvetica Neue Condensed",
+      "font_size": 80,
+      "color": "rgba(255,255,255,1)",
+      "font_weight": "bold",
+      "text_align": "center"
+    },
+    {
+      "id": "support",
+      "type": "text",
+      "x": 160,
+      "y": 460,
+      "width": 760,
+      "height": 120,
+      "z_index": 2,
+      "content": "A family the brand kit does not ship",
+      "font_family": "Comic Grotesk Pro",
+      "font_size": 36,
+      "color": "rgba(255,255,255,1)",
+      "text_align": "center"
+    },
+    {
+      "id": "known",
+      "type": "text",
+      "x": 160,
+      "y": 640,
+      "width": 760,
+      "height": 80,
+      "z_index": 2,
+      "content": "This line uses the brand sans",
+      "font_family": "Solstice Sans",
+      "font_size": 36,
+      "color": "rgba(255,255,255,1)",
+      "text_align": "center"
+    },
+    {
+      "id": "product",
+      "type": "image",
+      "x": 440,
+      "y": 760,
+      "width": 200,
+      "height": 200,
+      "z_index": 2,
+      "asset_id": "solstice_bottle.png",
+      "fit": "contain"
+    }
+  ]
+}
