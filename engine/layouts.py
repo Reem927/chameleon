@@ -8,6 +8,7 @@ from itertools import combinations
 from statistics import fmean, pstdev
 from typing import Any, Iterable, Mapping, Sequence
 
+from engine.constraints import validate_candidate
 from engine.geometry import (
     Bounds,
     clamp_element,
@@ -17,6 +18,7 @@ from engine.geometry import (
     scale_element,
     translate_group,
 )
+from engine.rectify import rectify
 from engine.text_fit import fit_text, line_count_at, text_overflow, wrap_width
 
 
@@ -43,6 +45,12 @@ QUALITY_WEIGHTS = {
 ROW_SHARE = 0.5
 # Free change in a unit's share of the canvas (LayoutGAN's area margin).
 AREA_SHARE_MARGIN = 0.3
+# Shapes at or below this opacity are soft glows and washes; above it they
+# are visible decorations (the fixture report uses the same line).
+VISIBLE_DECORATION_OPACITY = 0.3
+# A visible shape newly behind text clutters it but hides less than one
+# drawn on top.
+BEHIND_TEXT_WEIGHT = 0.5
 # A backing card fits snugly around what it holds; a shape many times larger
 # (a soft glow, a big circle) is decoration that happens to surround it.
 BACKING_MAX_AREA_RATIO = 4.0
@@ -51,6 +59,11 @@ FLOW_STRATEGIES = {
     "horizontal_split": ("row", 1),
     "vertical_stack": ("column", 1),
     "compact_banner": ("row", 2),
+}
+# Families built only when the decision policy asks for them (Phase 4).
+EXTRA_FLOW_STRATEGIES = {
+    "two_columns": ("column", 2),
+    "three_rows": ("row", 3),
 }
 # Graphic scale relative to text scale. 1.0 keeps the source balance between
 # text and graphics; lower values give text priority on cramped canvases.
@@ -67,11 +80,22 @@ COMFORTABLE_FONT_SIZE = 14.0
 
 
 def generate_candidates(
-    source: Mapping[str, Any], target_canvas: Mapping[str, Any]
+    source: Mapping[str, Any],
+    target_canvas: Mapping[str, Any],
+    policies: Sequence[Mapping[str, Any]] = (),
 ) -> list[tuple[str, Design]]:
-    """Return complete candidates in a stable order."""
+    """Return complete candidates in a stable order.
+
+    Every base layout is always built; policies can only add the extra
+    families they name (D-024).
+    """
+    requested = {policy.get("strategy") for policy in policies}
+    families = dict(FLOW_STRATEGIES)
+    families.update(
+        (name, shape) for name, shape in EXTRA_FLOW_STRATEGIES.items() if name in requested
+    )
     candidates = [("preserve_and_repair", preserve_and_repair(source, target_canvas))]
-    for name, (axis, lines) in FLOW_STRATEGIES.items():
+    for name, (axis, lines) in families.items():
         for ratio in GRAPHIC_RATIOS:
             label = name if ratio == 1.0 else f"{name}@{ratio:g}"
             candidates.append(
@@ -82,7 +106,39 @@ def generate_candidates(
                     ),
                 )
             )
-    return candidates
+    cleaned = []
+    for name, candidate in candidates:
+        rectified = rectify_candidate(source, target_canvas, candidate)
+        if rectified != candidate:
+            cleaned.append((f"{name}+clean", rectified))
+    return candidates + cleaned
+
+
+def rectify_candidate(
+    source: Mapping[str, Any], target_canvas: Mapping[str, Any], candidate: Mapping[str, Any]
+) -> Design:
+    """Snap and push apart a built layout (plan Phase 10, see engine/rectify.py)."""
+    _backgrounds, decorations, units = _parts(source)
+    backings = _backing_shapes(source, decorations, units)
+    return rectify(
+        candidate,
+        source["canvas"],
+        target_canvas,
+        units=units,
+        attached=[
+            [shape_id for shape_id, (_shape, held) in backings.items() if held is unit]
+            for unit in units
+        ],
+        blockers=[_carries_text(unit) for unit in units],
+        decorations=[
+            shape
+            for shape in decorations
+            if shape["id"] not in backings
+            and float(shape.get("opacity", 1.0)) > VISIBLE_DECORATION_OPACITY
+        ],
+        score=lambda design: score_candidate(source, target_canvas, design),
+        is_valid=lambda design: not validate_candidate(source, target_canvas, design),
+    )
 
 
 def preserve_and_repair(
@@ -248,6 +304,11 @@ def _parts(source: Mapping[str, Any]) -> tuple[list[Mapping[str, Any]], list[Map
     return backgrounds, decorations, units
 
 
+def content_units(source: Mapping[str, Any]) -> list[Unit]:
+    """Groups and free-standing elements that layouts place, in source order."""
+    return _content_units(source)
+
+
 def _content_units(
     source: Mapping[str, Any], excluded_ids: set[str] | None = None
 ) -> list[Unit]:
@@ -292,15 +353,18 @@ def _collision_quality(
 ) -> float:
     """New overlaps between units, plus LayoutRectifier's parent/child rule.
 
-    A backing shape must keep holding its unit, and any other shape drawn
-    above a unit must not newly cover it. Shapes behind units hide nothing.
+    A backing shape must keep holding its unit, any other shape drawn above
+    a unit must not newly cover it, and a visible shape must not newly sit
+    behind text. Faint shapes behind units hide nothing.
     """
     new_overlaps = []
+    source_bounds = [group_bounds(unit) for unit in source_units]
+    output_bounds = [group_bounds(unit) for unit in output_units]
     for (source_first, source_second), (output_first, output_second) in zip(
-        combinations(source_units, 2), combinations(output_units, 2)
+        combinations(source_bounds, 2), combinations(output_bounds, 2)
     ):
-        source_overlap = _unit_overlap_ratio(source_first, source_second)
-        output_overlap = _unit_overlap_ratio(output_first, output_second)
+        source_overlap = _overlap_ratio(source_first, source_second)
+        output_overlap = _overlap_ratio(output_first, output_second)
         new_overlaps.append(max(0.0, output_overlap - source_overlap))
 
     output_by_id = {element["id"]: element for element in candidate["elements"]}
@@ -316,11 +380,19 @@ def _collision_quality(
             covered = overlap_area(output_shape, child) / _bounds_area(child)
             if shape["id"] in backings and backings[shape["id"]][1] == source_unit:
                 new_overlaps.append(1.0 - covered)
-            elif any(stacking(shape) > stacking(element) for element in source_unit):
+            else:
+                above = any(stacking(shape) > stacking(element) for element in source_unit)
+                opacity = float(shape.get("opacity", 1.0))
+                # Behind text, only a visible shape matters, and it clutters
+                # rather than hides, so it costs half as much.
+                if not above and (
+                    opacity <= VISIBLE_DECORATION_OPACITY or not _carries_text(source_unit)
+                ):
+                    continue
                 before = group_bounds(source_unit)
                 was_covered = overlap_area(element_bounds(shape), before) / _bounds_area(before)
-                opacity = float(shape.get("opacity", 1.0))
-                new_overlaps.append(max(0.0, covered - was_covered) * opacity)
+                weight = opacity if above else opacity * BEHIND_TEXT_WEIGHT
+                new_overlaps.append(max(0.0, covered - was_covered) * weight)
     if not new_overlaps:
         return 1.0
     penalty = 0.7 * max(new_overlaps) + 0.3 * fmean(new_overlaps)
@@ -339,14 +411,13 @@ def _reading_order_quality(
     read left to right, otherwise top to bottom.
     """
     pairs = kept = 0
-    for (source_a, output_a), (source_b, output_b) in combinations(
-        zip(source_units, output_units), 2
-    ):
-        before = _reads_before(group_bounds(source_a), group_bounds(source_b))
+    bounds = [(group_bounds(a), group_bounds(b)) for a, b in zip(source_units, output_units)]
+    for (source_a, output_a), (source_b, output_b) in combinations(bounds, 2):
+        before = _reads_before(source_a, source_b)
         if before == 0:
             continue
         pairs += 1
-        kept += _reads_before(group_bounds(output_a), group_bounds(output_b)) == before
+        kept += _reads_before(output_a, output_b) == before
     return kept / pairs if pairs else 1.0
 
 
@@ -408,13 +479,12 @@ def _source_alignment_quality(
     into a row, so any edge or centre alignment counts as kept.
     """
     pairs = kept = 0
-    for (source_a, output_a), (source_b, output_b) in combinations(
-        zip(source_units, output_units), 2
-    ):
-        if not _aligned(group_bounds(source_a), group_bounds(source_b), source_canvas):
+    bounds = [(group_bounds(a), group_bounds(b)) for a, b in zip(source_units, output_units)]
+    for (source_a, output_a), (source_b, output_b) in combinations(bounds, 2):
+        if not _aligned(source_a, source_b, source_canvas):
             continue
         pairs += 1
-        kept += _aligned(group_bounds(output_a), group_bounds(output_b), target_canvas)
+        kept += _aligned(output_a, output_b, target_canvas)
     return kept / pairs if pairs else 1.0
 
 
@@ -462,9 +532,7 @@ def _normalised(bounds: Bounds, canvas: Mapping[str, Any]) -> Bounds:
     return Bounds(bounds.left / width, bounds.top / height, bounds.right / width, bounds.bottom / height)
 
 
-def _unit_overlap_ratio(first: Unit, second: Unit) -> float:
-    first_bounds = group_bounds(first)
-    second_bounds = group_bounds(second)
+def _overlap_ratio(first_bounds: Bounds, second_bounds: Bounds) -> float:
     smaller_area = min(_bounds_area(first_bounds), _bounds_area(second_bounds))
     if smaller_area <= 0:
         return 0.0

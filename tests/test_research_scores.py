@@ -98,10 +98,19 @@ class ParentChildCollisionTests(unittest.TestCase):
         covering = _moved(source, "chip", x=40, y=40)
         self.assertLess(_part(source, covering, "collision"), 1.0)
 
-    def test_shape_newly_behind_text_is_harmless(self):
+    def test_faint_shape_newly_behind_text_is_harmless(self):
         source = _design([_shape("chip", 300, 300, 120, 60, z_index=0), _text("copy", 40, 40)])
+        source["elements"][0]["opacity"] = 0.2
         behind = _moved(source, "chip", x=40, y=40)
         self.assertEqual(_part(source, behind, "collision"), 1.0)
+
+    def test_visible_shape_behind_text_costs_less_than_one_on_top(self):
+        below = _design([_shape("chip", 300, 300, 120, 60, z_index=0), _text("copy", 40, 40)])
+        above = _design([_shape("chip", 300, 300, 120, 60, z_index=5), _text("copy", 40, 40)])
+        behind_score = _part(below, _moved(below, "chip", x=40, y=40), "collision")
+        covering_score = _part(above, _moved(above, "chip", x=40, y=40), "collision")
+        self.assertLess(behind_score, 1.0)
+        self.assertLess(covering_score, behind_score)
 
 
 class AreaShareTests(unittest.TestCase):

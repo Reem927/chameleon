@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from copy import deepcopy
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Iterable, Mapping, Sequence
 
 
@@ -33,6 +34,26 @@ class Bounds:
 
 def element_bounds(element: Mapping[str, Any]) -> Bounds:
     """Return the visible axis-aligned bounds after rotation about the center."""
+    box = (
+        element["x"],
+        element["y"],
+        element["width"],
+        element["height"],
+        element.get("rotation", 0),
+    )
+    # Scoring asks for the same boxes many times, so plain numbers are
+    # cached; anything else takes the validating path and raises as before.
+    if all(type(value) in (int, float) for value in box):
+        return _cached_bounds(*box)
+    return _bounds(element)
+
+
+@lru_cache(maxsize=65536)
+def _cached_bounds(x: float, y: float, width: float, height: float, rotation: float) -> Bounds:
+    return _bounds({"x": x, "y": y, "width": width, "height": height, "rotation": rotation})
+
+
+def _bounds(element: Mapping[str, Any]) -> Bounds:
     x = _finite_number(element["x"], "x")
     y = _finite_number(element["y"], "y")
     width = _finite_number(element["width"], "width")
