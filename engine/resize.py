@@ -58,7 +58,10 @@ def resize(source: dict[str, Any], target_canvas: dict[str, Any]) -> dict[str, A
         # normally pass above. This keeps the engine deterministic.
         return safe_fallback(source, target_canvas)
     except Exception:  # noqa: BLE001 - engine/main.py has no per-task error handling
-        return _unchanged_copy(source, target_canvas)
+        try:
+            return safe_fallback(source, target_canvas)
+        except Exception:  # noqa: BLE001 - malformed input can break the fallback too
+            return _unchanged_copy(source, target_canvas)
 
 
 def _policies(source: Any, target_canvas: Any) -> list[dict]:
