@@ -1,6 +1,6 @@
 import { useMemo, useSyncExternalStore } from 'react'
 import { motion } from 'motion/react'
-import type { CandidateScore, DebugPayload, DesignElement } from '../../types/contracts'
+import type { DesignElement } from '../../types/contracts'
 import { sortedByZ } from '../preview/design'
 import { assetUrl, assetsVersion, subscribeAssets } from '../preview/sources'
 import { sameCanvas, useApp } from '../preview/store'
@@ -129,52 +129,6 @@ export function LayersPanel() {
           )
         })}
       </ul>
-    </div>
-  )
-}
-
-function candidates(debug: DebugPayload): CandidateScore[] {
-  if (Array.isArray(debug.candidate_scores)) return debug.candidate_scores
-  return Object.entries(debug.candidate_scores).map(([name, v]) =>
-    typeof v === 'number' ? { name, total: v } : { name, ...(v as Omit<CandidateScore, 'name'>) },
-  )
-}
-
-/** Candidate strategies from Reem's DebugPayload. Hidden until the API returns one. */
-export function DecisionPanel() {
-  const debug = useApp((s) => s.result?.debug)
-  if (!debug) return null
-  const list = candidates(debug).sort((a, b) => (b.total ?? 0) - (a.total ?? 0))
-  const best = Math.max(...list.map((c) => c.total ?? 0), 1e-9)
-
-  return (
-    <div className="panel decision-panel">
-      <header className="panel-head">
-        <h2>Decision</h2>
-        <span className="chip">{debug.strategy}</span>
-      </header>
-      <ul className="candidates">
-        {list.map((c, i) => (
-          <li key={c.name} className={`candidate${c.name === debug.strategy ? ' is-chosen' : ''}${c.legal === false ? ' is-illegal' : ''}`}>
-            <span className="cand-name">{c.name}</span>
-            <span className="cand-bar">
-              <motion.span
-                initial={{ width: 0 }}
-                animate={{ width: `${((c.total ?? 0) / best) * 100}%` }}
-                transition={{ delay: i * 0.05, type: 'spring', stiffness: 90, damping: 18 }}
-              />
-            </span>
-            <span className="mono">{c.total?.toFixed(3) ?? '—'}</span>
-          </li>
-        ))}
-      </ul>
-      {debug.warnings.length > 0 && (
-        <ul className="warnings">
-          {debug.warnings.map((w, i) => (
-            <li key={i}>{w}</li>
-          ))}
-        </ul>
-      )}
     </div>
   )
 }

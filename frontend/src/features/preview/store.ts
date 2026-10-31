@@ -103,7 +103,8 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   async checkEngine() {
-    set({ engine: 'checking' })
+    // Background retries stay quiet; only the first check shows "checking".
+    if (get().engine !== 'offline') set({ engine: 'checking' })
     client = await loadEngineClient()
     if (!client) return set({ engine: 'offline' })
     try {
