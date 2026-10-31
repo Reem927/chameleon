@@ -3,7 +3,8 @@ import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { Mascot, type MascotMood } from './components/Mascot'
 import { Kbd, Segmented, Toasts } from './components/ui'
 import { TargetPanel } from './features/canvas-controls/TargetPanel'
-import { ChecksPanel, DecisionPanel, LayersPanel } from './features/inspector/InspectorPanels'
+import { DecisionPanel } from './features/inspector/DecisionPanel'
+import { ChecksPanel, LayersPanel } from './features/inspector/InspectorPanels'
 import { copyJson, downloadJson, downloadUrl } from './features/preview/exporters'
 import { ingestFiles, ingestJson } from './features/preview/ingest'
 import { FilePicker, SampleGallery } from './features/preview/Library'
@@ -12,6 +13,7 @@ import { sameCanvas, useApp, type ViewMode } from './features/preview/store'
 import { useSkin } from './features/preview/useSkin'
 
 const RESIZE_DEBOUNCE_MS = 380
+const ENGINE_RETRY_MS = 8000
 
 function Wordmark() {
   return (
@@ -35,7 +37,7 @@ function EnginePill() {
       onClick={() => checkEngine()}
       title={
         engine === 'offline'
-          ? 'No API client yet (src/services). Results come from output/ runs or dropped output JSON. Click to re-check.'
+          ? 'Start the API with python -m api.app. Until then results come from output/ or dropped files. Retrying every few seconds.'
           : 'Click to re-check'
       }
     >
@@ -73,13 +75,18 @@ function ResultActions() {
 }
 
 function StageBar() {
-  const { source, result, target, showing, setShowing, engine, resizing } = useApp()
+  const { source, result, target, showing, setShowing, engine, resizing, error } = useApp()
   if (!source) return null
   const stale = !result || !sameCanvas(result.design.canvas, target)
   let message: string
   if (resizing) message = 'The engine is reshaping your design…'
-  else if (!result && engine !== 'online') message = 'Engine offline. Run python -m engine.main for samples, or drop an output JSON.'
+  else if (error && stale)
+    message = result
+      ? `Resize failed, so this is still the ${result.design.canvas.width}×${result.design.canvas.height} result. Change the size to try again.`
+      : 'Resize failed. Change the size to try again.'
+  else if (!result && engine !== 'online') message = 'Engine offline. Start it with python -m api.app, or drop an output JSON.'
   else if (stale && engine !== 'online') message = `Showing the ${result!.design.canvas.width}×${result!.design.canvas.height} result. Engine offline, so the new target can't be resized yet.`
+  else if (showing === 'source' && engine === 'online') message = 'Drag the frame or pick a preset. The engine reshapes live.'
   else if (showing === 'source') message = 'Showing the source. Press Space to shift.'
   else message = 'Showing the result. Hover any element to trace it.'
 
@@ -146,10 +153,18 @@ export default function App() {
     checkEngine()
   }, [checkEngine])
 
-  // Ask the engine for a new layout once the target settles.
+  // Keep looking for the API while it is down, so starting it later just works.
+  useEffect(() => {
+    if (engine !== 'offline') return
+    const timer = setInterval(checkEngine, ENGINE_RETRY_MS)
+    return () => clearInterval(timer)
+  }, [engine, checkEngine])
+
+  // Ask the engine for a new layout once the target settles. Results read
+  // from output/ may be from an older engine, so a live one replaces them.
   useEffect(() => {
     if (!source || engine !== 'online' || dragging) return
-    if (result && sameCanvas(result.design.canvas, target)) return
+    if (result && result.origin !== 'engine-run' && sameCanvas(result.design.canvas, target)) return
     const timer = setTimeout(requestResize, RESIZE_DEBOUNCE_MS)
     return () => clearTimeout(timer)
   }, [source, target, engine, dragging, result, requestResize])

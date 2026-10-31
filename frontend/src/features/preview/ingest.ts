@@ -36,6 +36,8 @@ export function ingestJson(text: string, label: string, sampleFile?: string): bo
 export async function loadSample(sample: SampleRef) {
   const ok = ingestJson(await sample.load(), sample.file.replace(/\.json$/i, ''), sample.file)
   if (!ok) return
+  // With the live engine up, its fresh result beats an older output/ file.
+  if (useApp.getState().engine === 'online') return
   const output = findEngineOutput(sample.file)
   if (!output) return
   try {

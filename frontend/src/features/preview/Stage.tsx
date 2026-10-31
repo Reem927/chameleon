@@ -4,6 +4,7 @@ import type { Canvas, Design } from '../../types/contracts'
 import { useElementSize } from '../../components/useElementSize'
 import { TargetFrame } from '../canvas-controls/TargetFrame'
 import { DesignCanvas } from './DesignCanvas'
+import { isUploadedAsset } from './sources'
 import { sameCanvas, useApp } from './store'
 
 const PAD = 72
@@ -198,7 +199,13 @@ function RenderView({ zoom }: { zoom: number }) {
         <div className="render-empty">Load a result to compare it against the official render.</div>
       ) : !result.pngUrl ? (
         <div className="render-empty">
-          No official render yet. Run <code>python -m engine.main</code>, or drop the PNG here.
+          {result.origin === 'api' ? (
+            <>The engine returned no render for this layout. Check that the API reports <code>"renderer": true</code>.</>
+          ) : (
+            <>
+              No official render yet. Run <code>python -m engine.main</code>, or drop the PNG here.
+            </>
+          )}
         </div>
       ) : (
         scale > 0 && (
@@ -234,6 +241,9 @@ function RenderView({ zoom }: { zoom: number }) {
                 onChange={(e) => setSplit(Number(e.target.value))}
                 aria-label={mode === 'wipe' ? 'Wipe position' : 'Live preview opacity'}
               />
+              {result.origin === 'api' && result.design.elements.some((e) => e.type === 'image' && isUploadedAsset(e.asset_id)) && (
+                <span className="render-note">Images you dropped in stay in the browser, so the official render shows them as placeholders.</span>
+              )}
             </div>
           </>
         )

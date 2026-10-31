@@ -120,6 +120,35 @@ engine needs must be installed at **build** time (add it to
 `requirements.txt`), not fetched at run time. If you're using a locally
 hosted model, bake its weights into the image during the build step.
 
+## Demo UI and API (local only, not scored)
+
+A browser demo shows the engine at work: pick a sample or drop a design, drag
+the target frame or pick a format, and watch the layout morph. It also shows
+the official render, rule checks, and why the engine chose its layout. Neither
+the UI nor the API is part of the Docker image, and `engine/` never imports
+them.
+
+Needs Python 3.10+ and Node 22.12+. Run each in its own terminal from the repo root:
+
+```bash
+# 1. API on http://127.0.0.1:8000 (uses the same requirements.txt)
+pip install -r requirements.txt
+python -m api.app
+
+# 2. UI on http://localhost:5173
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:5173. The pill in the top right says "engine online"
+once the UI reaches the API; start them in either order. Without the API the
+UI still opens samples and shows results from `output/` after
+`python -m engine.main`.
+
+Frontend checks: `npm test` and `npm run build` in `frontend/`. Details are in
+`docs/SHIVRAJ_HANDOFF.md` and the API in `docs/api-contract.md`.
+
 ## See also
 
 - `chameleon_design_schema_v0.9.json` — full input/output field spec

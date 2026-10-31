@@ -83,7 +83,7 @@ export interface DesignTask {
 export const MUTABLE_FIELDS = ['x', 'y', 'width', 'height', 'font_size'] as const
 
 // ---------------------------------------------------------------------------
-// Demo API (provisional, PLAN.md §3)
+// Demo API (docs/api-contract.md, October 30, 2026)
 // ---------------------------------------------------------------------------
 
 export interface ResizeRequest {
@@ -91,19 +91,32 @@ export interface ResizeRequest {
   target_canvas: Canvas
 }
 
+/** One row per candidate, in build order. */
 export interface CandidateScore {
+  /** Family, optional `@0.6`/`@0.3` graphic ratio, optional `+clean`. */
   name: string
-  legal?: boolean
+  legal: boolean
+  /** Present when `legal` is false. */
+  problems?: string[]
+  /** Present when `legal` is true: policy weight added to the score. */
+  weight?: number
+  /** Present when `legal` is true: weighted score plus weight. */
   total?: number
-  /** e.g. collision, text, hierarchy, canvas_use, alignment, balance_spacing, group_cohesion */
+  /** Present when `legal` is true: each part from 0 to 1. */
   breakdown?: Record<string, number>
+}
+
+export interface PolicyHint {
+  strategy: string
+  weight: number
+  reason: string
 }
 
 export interface DebugPayload {
   strategy: string
-  candidate_scores: CandidateScore[] | Record<string, unknown>
+  candidate_scores: CandidateScore[]
+  policies: PolicyHint[]
   warnings: string[]
-  [key: string]: unknown
 }
 
 export interface ResizeResponse {

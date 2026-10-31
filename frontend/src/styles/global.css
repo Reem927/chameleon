@@ -92,12 +92,14 @@ code {
   display: grid;
   grid-template-rows: auto 1fr;
   height: 100vh;
-  overflow: hidden;
+  /* clip, not hidden: a hidden box can still be scrolled by focus, which
+     slid the whole shell up when a preset button took focus. */
+  overflow: clip;
   isolation: isolate;
 }
 
 .ambient {
-  position: absolute;
+  position: fixed;
   inset: -20%;
   z-index: -1;
   pointer-events: none;
@@ -1075,23 +1077,141 @@ code {
 }
 .candidate {
   display: grid;
-  grid-template-columns: 1fr 80px auto;
+  grid-template-columns: minmax(0, 1fr) 64px auto;
   gap: 8px;
   align-items: center;
+  padding: 4px 6px;
+  border-radius: 8px;
   font-size: 12px;
+  cursor: default;
+  transition: background 0.15s;
+}
+.candidate.is-focus {
+  background: rgb(255 255 255 / 0.05);
+}
+.candidate.is-chosen {
+  background: var(--accent-soft);
 }
 .candidate.is-chosen .cand-name {
   color: var(--accent);
   font-weight: 600;
 }
 .candidate.is-illegal {
-  opacity: 0.45;
+  grid-template-columns: minmax(0, 1fr) auto;
+  opacity: 0.55;
+}
+.candidate.is-illegal .cand-name {
   text-decoration: line-through;
 }
 .cand-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-transform: capitalize;
+}
+.cand-name small {
+  color: var(--muted);
+  font-weight: 400;
+  text-transform: none;
+}
+.cand-total {
+  font-size: 11px;
+  color: var(--muted);
+}
+.cand-problem {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: var(--bad);
+}
+
+.decision-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+.decision-pick b {
+  text-transform: capitalize;
+  color: var(--accent);
+}
+.tag {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  color: var(--muted);
+}
+.radar {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  margin: 0 auto;
+  overflow: visible;
+}
+.radar-ring {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.07);
+}
+.radar-spoke {
+  stroke: rgb(255 255 255 / 0.07);
+}
+.radar-label {
+  fill: var(--muted);
+  font-size: 9px;
+  font-family: var(--ui);
+}
+.radar-chosen {
+  fill: color-mix(in oklab, var(--accent) 28%, transparent);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.radar-focus {
+  fill: none;
+  stroke: var(--accent-2);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  stroke-linejoin: round;
+}
+.radar-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  margin: 0 0 8px;
+}
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.swatch-chosen {
+  background: var(--accent);
+}
+.swatch-focus {
+  border: 1.5px dashed var(--accent-2);
+}
+.policies {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.policies h3 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.policies p {
+  margin: 2px 0;
+}
+.policies b {
+  color: var(--text);
+  text-transform: capitalize;
 }
 .cand-bar {
   height: 6px;
@@ -1117,6 +1237,8 @@ code {
 }
 .result-actions button {
   flex: 1;
+  white-space: nowrap;
+  padding-inline: 8px;
 }
 
 /* ------------------------------------------------------------ overlays */
@@ -1248,4 +1370,11 @@ code {
   .mascot-busy {
     animation: none;
   }
+}
+
+.render-note {
+  max-width: 260px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--warn);
 }
