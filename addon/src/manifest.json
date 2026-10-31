@@ -1,0 +1,21 @@
+{
+    "testId": "427c72f0-1439-4d67-bd43-dd78182bd07c",
+    "name": "Chameleon Viewer",
+    "version": "1.0.0",
+    "manifestVersion": 2,
+    "requirements": {
+        "apps": [
+            {
+                "name": "Express",
+                "apiVersion": 1
+            }
+        ]
+    },
+    "entryPoints": [
+        {
+            "type": "panel",
+            "id": "panel1",
+            "main": "index.html"
+        }
+    ]
+}
