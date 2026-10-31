@@ -149,6 +149,8 @@ UI still opens samples and shows results from `output/` after
 Frontend checks: `npm test` and `npm run build` in `frontend/`. Details are in
 `docs/SHIVRAJ_HANDOFF.md` and the API in `docs/api-contract.md`.
 
+The required (not scored) Adobe Express viewer add-on lives in addon/; see addon/README.md. It is not part of the Docker image.
+
 ## See also
 
 - `chameleon_design_schema_v0.9.json` — full input/output field spec
