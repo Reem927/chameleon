@@ -1371,3 +1371,10 @@ code {
     animation: none;
   }
 }
+
+.render-note {
+  max-width: 260px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--warn);
+}

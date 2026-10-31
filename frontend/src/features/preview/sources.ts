@@ -53,6 +53,11 @@ export function assetUrl(assetId: string): string | null {
   return assetUrls.get(assetId) ?? null
 }
 
+/** True for images the user dropped in; the API cannot see those. */
+export function isUploadedAsset(assetId: string): boolean {
+  return assetUrls.get(assetId)?.startsWith('blob:') ?? false
+}
+
 /** Images the user drops in join the brand kit assets, matched by file name. */
 export function registerUploadedAsset(file: File) {
   const previous = assetUrls.get(file.name)

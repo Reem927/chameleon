@@ -75,11 +75,15 @@ function ResultActions() {
 }
 
 function StageBar() {
-  const { source, result, target, showing, setShowing, engine, resizing } = useApp()
+  const { source, result, target, showing, setShowing, engine, resizing, error } = useApp()
   if (!source) return null
   const stale = !result || !sameCanvas(result.design.canvas, target)
   let message: string
   if (resizing) message = 'The engine is reshaping your design…'
+  else if (error && stale)
+    message = result
+      ? `Resize failed, so this is still the ${result.design.canvas.width}×${result.design.canvas.height} result. Change the size to try again.`
+      : 'Resize failed. Change the size to try again.'
   else if (!result && engine !== 'online') message = 'Engine offline. Start it with python -m api.app, or drop an output JSON.'
   else if (stale && engine !== 'online') message = `Showing the ${result!.design.canvas.width}×${result!.design.canvas.height} result. Engine offline, so the new target can't be resized yet.`
   else if (showing === 'source' && engine === 'online') message = 'Drag the frame or pick a preset. The engine reshapes live.'

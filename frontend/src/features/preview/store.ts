@@ -131,6 +131,14 @@ export const useApp = create<AppState>((set, get) => ({
       })
     } catch (err) {
       if (controller.signal.aborted) return
+      // A dead server and a rejected design look alike from here; ask health.
+      // Going offline starts the retry loop, and coming back re-requests.
+      const alive = await client.health().catch(() => false)
+      if (!alive) {
+        set({ resizing: false, error: null, engine: 'offline' })
+        get().toast('bad', 'Lost the engine. Reconnecting when it is back…')
+        return
+      }
       const message = err instanceof Error ? err.message : String(err)
       set({ resizing: false, error: message })
       get().toast('bad', `Resize failed: ${message}`)
